@@ -9,12 +9,13 @@ buildscript {
 apply plugin: 'android-library'
 
 repositories {
-        mavenCentral()
+    mavenCentral()
+    mavenLocal()
 }
 
 android {
     compileSdkVersion 19
-    buildToolsVersion "19.0.3"
+    buildToolsVersion '19.0.3'
 
     defaultConfig {
         minSdkVersion 14
@@ -32,4 +33,18 @@ android {
 
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
+}
+
+apply plugin: 'maven'
+
+group = "info.breezes"
+
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            repository(url: "~/.m2")
+            pom.version  = '0.1.0'
+            pom.artifactId = 'breezes-orm'
+        }
+    }
 }
