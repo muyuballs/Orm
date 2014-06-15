@@ -17,10 +17,9 @@ public abstract class OrmSQLiteHelper extends SQLiteOpenHelper {
         super(context, name, factory, version, errorHandler);
     }
 
-    public synchronized void close(){
+    public synchronized void close() {
         super.close();
     }
-
 
     public <T> QueryAble<T> query(Class<T> tableClass) {
         return new QueryAble<T>(tableClass, getReadableDatabase());
@@ -34,20 +33,23 @@ public abstract class OrmSQLiteHelper extends SQLiteOpenHelper {
         return TableUtils.update(getWritableDatabase(), object);
     }
 
-    public int insertOrUpdate(Object object){
-        return -1;
+    public long insertOrUpdate(Object object) {
+        return TableUtils.insertOrUpdate(getWritableDatabase(), object);
     }
 
-    public <T> int updateBy(Object object,String column){
-        return -1;
+    public <T> int updateBy(Object object, String column) {
+        return TableUtils.updateBy(getWritableDatabase(), object,column);
     }
 
-    public int delete(Object object){
-        return -1;
+    public int delete(Object object) {
+        return TableUtils.delete(getWritableDatabase(), object);
     }
 
-    public <T> int deleteBy(Object object,String column){
-        return -1;
+    public <T> int deleteBy(Object object, String column) {
+        return TableUtils.deleteBy(getWritableDatabase(), object,column);
     }
 
+    public long[]insertAll(Object[] objects){
+        return TableUtils.insertAll(getWritableDatabase(), objects);
+    }
 }
