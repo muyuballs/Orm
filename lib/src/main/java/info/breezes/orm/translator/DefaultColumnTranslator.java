@@ -1,11 +1,10 @@
-package info.breezes.orm.tranlator;
+package info.breezes.orm.translator;
 
 import android.database.Cursor;
 import android.text.TextUtils;
 import info.breezes.orm.annotation.Column;
 
 import java.lang.reflect.Field;
-import java.util.BitSet;
 import java.util.Date;
 
 /**
@@ -45,7 +44,7 @@ public class DefaultColumnTranslator implements IColumnTranslator {
         try {
             if (Date.class.isAssignableFrom(field.getType())) {
                 Date date = (Date) field.get(obj);
-                return date.getTime();
+                return ""+date.getTime();
             }
             if (boolean.class.isAssignableFrom(field.getType())) {
                 boolean bool = (Boolean) field.get(obj);

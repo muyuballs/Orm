@@ -1,18 +1,19 @@
 package info.breezes.orm.utils;
 
+import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.net.Uri;
 import android.text.TextUtils;
 import android.util.Log;
 import info.breezes.orm.OrmConfig;
 import info.breezes.orm.annotation.Column;
 import info.breezes.orm.annotation.Table;
-import info.breezes.orm.tranlator.IColumnTranslator;
+import info.breezes.orm.translator.IColumnTranslator;
 
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 
@@ -51,7 +52,7 @@ public class TableUtils {
                     if (column.uniqueIndex()) {
                         indexSql.append("CREATE UNIQUE INDEX ");
                         indexSql.append(getTableName(tableClass, table));
-                        indexSql.append(".uq.");
+                        indexSql.append("_uq_");
                         indexSql.append(System.nanoTime());
                         indexSql.append(" ON ");
                         indexSql.append(getTableName(tableClass, table));
@@ -111,13 +112,14 @@ public class TableUtils {
         }
     }
 
-    private static long insertInternal(SQLiteDatabase database, Object object) {
+    private static long insertInternal(SQLiteDatabase database, Object object, Context context) {
         Table table = (Table) object.getClass().getAnnotation(Table.class);
+        String tableName = getTableName(object.getClass(), table);
         ArrayList<Object> params = new ArrayList<Object>();
         StringBuilder values = new StringBuilder(" VALUES(");
         StringBuilder insertSql = new StringBuilder();
         insertSql.append("INSERT INTO ");
-        insertSql.append(getTableName(object.getClass(), table));
+        insertSql.append(tableName);
         insertSql.append("(");
         Field fields[] = object.getClass().getFields();
         for (Field field : fields) {
@@ -136,6 +138,9 @@ public class TableUtils {
         Log.i("ORM Insert Into Table ", insertSql.toString());
         database.execSQL(insertSql.toString(), params.toArray());
         long rowId = getLastInsertRowId(database);
+        if (rowId > 0) {
+            notifyChange(tableName, context);
+        }
         return rowId;
 
     }
@@ -150,14 +155,15 @@ public class TableUtils {
         return -1;
     }
 
-    private static int updateInternal(SQLiteDatabase database, Object object, String baseColumn) {
+    private static int updateInternal(SQLiteDatabase database, Object object, String baseColumn, Context context) {
         Table table = (Table) object.getClass().getAnnotation(Table.class);
+        String tableName = getTableName(object.getClass(), table);
         ArrayList<Object> params = new ArrayList<Object>();
         StringBuilder whereCondition = new StringBuilder(" WHERE ");
         Object pkValue = null;
         StringBuilder updateSql = new StringBuilder();
         updateSql.append("UPDATE ");
-        updateSql.append(getTableName(object.getClass(), table));
+        updateSql.append(tableName);
         updateSql.append(" SET ");
         Field fields[] = object.getClass().getFields();
         for (Field field : fields) {
@@ -192,6 +198,9 @@ public class TableUtils {
         Log.i("ORM Update Table ", updateSql.toString());
         database.execSQL(updateSql.toString(), params.toArray());
         int changes = getLastChanges(database);
+        if (changes > 0) {
+            notifyChange(tableName, context);
+        }
         return changes;
     }
 
@@ -205,14 +214,15 @@ public class TableUtils {
         return -1;
     }
 
-    private static int deleteInternal(SQLiteDatabase database, Object object, String baseColumn) {
+    private static int deleteInternal(SQLiteDatabase database, Object object, String baseColumn, Context context) {
         Table table = (Table) object.getClass().getAnnotation(Table.class);
         ArrayList<Object> params = new ArrayList<Object>();
         StringBuilder whereCondition = new StringBuilder(" WHERE ");
         Object pkValue = null;
         StringBuilder deleteSql = new StringBuilder();
         deleteSql.append("DELETE FROM ");
-        deleteSql.append(getTableName(object.getClass(), table));
+        String tableName = getTableName(object.getClass(), table);
+        deleteSql.append(tableName);
         Field fields[] = object.getClass().getFields();
         for (Field field : fields) {
             Column column = (Column) field.getAnnotation(Column.class);
@@ -238,15 +248,18 @@ public class TableUtils {
         Log.i("ORM Delete From Table ", deleteSql.toString());
         database.execSQL(deleteSql.toString(), params.toArray());
         int changes = getLastChanges(database);
+        if (changes > 0) {
+            notifyChange(tableName, context);
+        }
         return changes;
     }
 
 
-    public static long insert(SQLiteDatabase database, Object object) {
+    public static long insert(SQLiteDatabase database, Object object, Context context) {
         checkOrmTableInstance(object);
         try {
             database.beginTransaction();
-            long rowId = insertInternal(database, object);
+            long rowId = insertInternal(database, object, context);
             database.setTransactionSuccessful();
             return rowId;
         } finally {
@@ -254,11 +267,11 @@ public class TableUtils {
         }
     }
 
-    public static int update(SQLiteDatabase database, Object object) {
+    public static int update(SQLiteDatabase database, Object object, Context context) {
         checkOrmTableInstance(object);
         try {
             database.beginTransaction();
-            int rowCount = updateInternal(database, object, null);
+            int rowCount = updateInternal(database, object, null, context);
             database.setTransactionSuccessful();
             return rowCount;
         } finally {
@@ -266,13 +279,13 @@ public class TableUtils {
         }
     }
 
-    public static long insertOrUpdate(SQLiteDatabase database, Object object) {
+    public static long insertOrUpdate(SQLiteDatabase database, Object object, Context context) {
         checkOrmTableInstance(object);
         try {
             database.beginTransaction();
-            long count = updateInternal(database, object, null);
+            long count = updateInternal(database, object, null, context);
             if (count < 1) {
-                count = insertInternal(database, object);
+                count = insertInternal(database, object, context);
             }
             database.setTransactionSuccessful();
             return count;
@@ -281,11 +294,11 @@ public class TableUtils {
         }
     }
 
-    public static int delete(SQLiteDatabase database, Object object) {
+    public static int delete(SQLiteDatabase database, Object object, Context context) {
         checkOrmTableInstance(object);
         try {
             database.beginTransaction();
-            int count = deleteInternal(database, object, null);
+            int count = deleteInternal(database, object, null, context);
             database.setTransactionSuccessful();
             return count;
         } finally {
@@ -293,11 +306,11 @@ public class TableUtils {
         }
     }
 
-    public static int updateBy(SQLiteDatabase database, Object object, String column) {
+    public static int updateBy(SQLiteDatabase database, Object object, String column, Context context) {
         checkOrmTableInstance(object);
         try {
             database.beginTransaction();
-            int rowCount = updateInternal(database, object, column);
+            int rowCount = updateInternal(database, object, column, context);
             database.setTransactionSuccessful();
             return rowCount;
         } finally {
@@ -305,11 +318,11 @@ public class TableUtils {
         }
     }
 
-    public static int deleteBy(SQLiteDatabase database, Object object, String column) {
+    public static int deleteBy(SQLiteDatabase database, Object object, String column, Context context) {
         checkOrmTableInstance(object);
         try {
             database.beginTransaction();
-            int count = deleteInternal(database, object, column);
+            int count = deleteInternal(database, object, column, context);
             database.setTransactionSuccessful();
             return count;
         } finally {
@@ -317,7 +330,7 @@ public class TableUtils {
         }
     }
 
-    public static long[] insertAll(SQLiteDatabase database, Object[] objects) {
+    public static long[] insertAll(SQLiteDatabase database, Object[] objects, Context context) {
         if (objects != null) {
             try {
                 database.beginTransaction();
@@ -325,7 +338,7 @@ public class TableUtils {
                 for (int i = 0; i < objects.length; i++) {
                     Object object = objects[i];
                     checkOrmTableInstance(object);
-                    rowIds[i] = insertInternal(database, object);
+                    rowIds[i] = insertInternal(database, object, context);
                 }
                 database.setTransactionSuccessful();
                 return rowIds;
@@ -336,17 +349,17 @@ public class TableUtils {
         throw new NullPointerException("objects is null");
     }
 
-    public static void checkOrmTableInstance(Object object) {
+    public static void checkOrmTableInstance(final Object object) {
         if ((Table) object.getClass().getAnnotation(Table.class) == null) {
             throw new RuntimeException(object.getClass().getName() + " is not an orm table instance.");
         }
     }
 
-    public static String getColumnName(Field field) {
+    public static String getColumnName(final Field field) {
         return getColumnName(field, (Column) field.getAnnotation(Column.class));
     }
 
-    public static String getColumnName(Field field, Column column) {
+    public static String getColumnName(final Field field,final Column column) {
         if (column != null) {
             return TextUtils.isEmpty(column.name()) ? field.getName() : column.name();
         } else {
@@ -354,15 +367,21 @@ public class TableUtils {
         }
     }
 
-    public static String getTableName(Class<?> tableClass) {
+    public static String getTableName(final Class<?> tableClass) {
         return getTableName(tableClass, (Table) tableClass.getAnnotation(Table.class));
     }
 
-    public static String getTableName(Class<?> tableClass, Table table) {
+    public static String getTableName(final Class<?> tableClass, final Table table) {
         if (table != null) {
             return TextUtils.isEmpty(table.name()) ? tableClass.getSimpleName() : table.name();
         } else {
             throw new RuntimeException(tableClass.getName() + " is not an orm table.");
+        }
+    }
+
+    private static void notifyChange(final String s,final Context context) {
+        if (context != null && !TextUtils.isEmpty(s)) {
+            context.getContentResolver().notifyChange(Uri.parse("content://orm/" + s), null, false);
         }
     }
 }

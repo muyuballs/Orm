@@ -1,7 +1,9 @@
 package info.breezes.orm;
 
+import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.net.Uri;
 import android.util.Log;
 import info.breezes.orm.utils.CursorUtils;
 import info.breezes.orm.utils.TableUtils;
@@ -21,10 +23,13 @@ public class QueryAble<T> implements Iterable<T>, Iterator<T> {
     private String sql;
     private Cursor cursor;
     private HashMap<String, Integer> columnIndex;
+    private Context mContext;
+    private String tableName;
 
-    public QueryAble(Class<T> table, SQLiteDatabase database) {
+    public QueryAble(Class<T> table, SQLiteDatabase database, Context context) {
         this.table = table;
         this.database = database;
+        this.mContext = context;
         wheres = new ArrayList<Where>();
         orderBys = new ArrayList<OrderBy>();
         params = new ArrayList<String>();
@@ -79,6 +84,9 @@ public class QueryAble<T> implements Iterable<T>, Iterator<T> {
         sql = buildSQL();
         Log.i("ORM QueryAble", sql);
         cursor = database.rawQuery(sql, params.toArray(new String[params.size()]));
+        if (mContext != null) {
+            cursor.setNotificationUri(mContext.getContentResolver(), Uri.parse("content://orm/" + tableName));
+        }
         columnIndex.clear();
         for (int i = 0; i < cursor.getColumnCount(); i++) {
             columnIndex.put(cursor.getColumnName(i), i);
@@ -118,14 +126,15 @@ public class QueryAble<T> implements Iterable<T>, Iterator<T> {
         return null;
     }
 
-    public Cursor getCursor(){
+    public Cursor getCursor() {
         return this.cursor;
     }
 
     private String buildSQL() {
+        tableName = TableUtils.getTableName(table);
         StringBuilder stringBuilder = new StringBuilder();
         stringBuilder.append("SELECT * FROM ");
-        stringBuilder.append(TableUtils.getTableName(table));
+        stringBuilder.append(tableName);
         if (wheres.size() > 0) {
             Where where = wheres.get(0);
             stringBuilder.append(" WHERE ");

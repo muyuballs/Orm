@@ -1,4 +1,4 @@
-package info.breezes.orm.tranlator;
+package info.breezes.orm.translator;
 
 import android.database.Cursor;
 import info.breezes.orm.annotation.Column;

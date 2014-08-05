@@ -1,8 +1,8 @@
 package info.breezes.orm;
 
 
-import info.breezes.orm.tranlator.DefaultColumnTranslator;
-import info.breezes.orm.tranlator.IColumnTranslator;
+import info.breezes.orm.translator.DefaultColumnTranslator;
+import info.breezes.orm.translator.IColumnTranslator;
 
 import java.util.HashMap;
 

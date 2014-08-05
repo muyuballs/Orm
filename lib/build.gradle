@@ -3,7 +3,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:0.9.+'
+        classpath 'com.android.tools.build:gradle:0.12.1'
     }
 }
 apply plugin: 'android-library'
@@ -15,7 +15,7 @@ repositories {
 
 android {
     compileSdkVersion 19
-    buildToolsVersion '19.0.3'
+    buildToolsVersion '19.1.0'
 
     defaultConfig {
         minSdkVersion 14
@@ -43,7 +43,7 @@ uploadArchives {
     repositories {
         mavenDeployer {
             repository(url: "~/.m2")
-            pom.version  = '0.1.0'
+            pom.version  = '0.1.1'
             pom.artifactId = 'breezes-orm'
         }
     }

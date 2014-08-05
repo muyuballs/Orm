@@ -1,5 +1,6 @@
 package info.breezes.orm;
 
+import android.content.Context;
 import android.database.sqlite.SQLiteOpenHelper;
 import info.breezes.orm.utils.TableUtils;
 
@@ -9,12 +10,15 @@ import info.breezes.orm.utils.TableUtils;
 
 public abstract class OrmSQLiteHelper extends SQLiteOpenHelper {
 
-    public OrmSQLiteHelper(android.content.Context context, String name, android.database.sqlite.SQLiteDatabase.CursorFactory factory, int version) {
+    private Context mContext;
+
+    public OrmSQLiteHelper(Context context, String name, android.database.sqlite.SQLiteDatabase.CursorFactory factory, int version) {
         this(context, name, factory, version, null);
     }
 
-    public OrmSQLiteHelper(android.content.Context context, String name, android.database.sqlite.SQLiteDatabase.CursorFactory factory, int version, android.database.DatabaseErrorHandler errorHandler) {
+    public OrmSQLiteHelper(Context context, String name, android.database.sqlite.SQLiteDatabase.CursorFactory factory, int version, android.database.DatabaseErrorHandler errorHandler) {
         super(context, name, factory, version, errorHandler);
+        this.mContext = context;
     }
 
     public synchronized void close() {
@@ -22,34 +26,34 @@ public abstract class OrmSQLiteHelper extends SQLiteOpenHelper {
     }
 
     public <T> QueryAble<T> query(Class<T> tableClass) {
-        return new QueryAble<T>(tableClass, getReadableDatabase());
+        return new QueryAble<T>(tableClass, getReadableDatabase(),mContext);
     }
 
     public long insert(Object object) {
-        return TableUtils.insert(getWritableDatabase(), object);
+        return TableUtils.insert(getWritableDatabase(), object, mContext);
     }
 
     public int update(Object object) {
-        return TableUtils.update(getWritableDatabase(), object);
+        return TableUtils.update(getWritableDatabase(), object, mContext);
     }
 
     public long insertOrUpdate(Object object) {
-        return TableUtils.insertOrUpdate(getWritableDatabase(), object);
+        return TableUtils.insertOrUpdate(getWritableDatabase(), object, mContext);
     }
 
     public <T> int updateBy(Object object, String column) {
-        return TableUtils.updateBy(getWritableDatabase(), object,column);
+        return TableUtils.updateBy(getWritableDatabase(), object, column, mContext);
     }
 
     public int delete(Object object) {
-        return TableUtils.delete(getWritableDatabase(), object);
+        return TableUtils.delete(getWritableDatabase(), object, mContext);
     }
 
     public <T> int deleteBy(Object object, String column) {
-        return TableUtils.deleteBy(getWritableDatabase(), object,column);
+        return TableUtils.deleteBy(getWritableDatabase(), object, column, mContext);
     }
 
-    public long[]insertAll(Object[] objects){
-        return TableUtils.insertAll(getWritableDatabase(), objects);
+    public long[] insertAll(Object[] objects) {
+        return TableUtils.insertAll(getWritableDatabase(), objects, mContext);
     }
 }
