@@ -12,6 +12,7 @@ import java.util.HashMap;
 public final class OrmConfig {
     private static HashMap<Class<?>, IColumnTranslator> columnTranslatorHashMap = new HashMap<Class<?>, IColumnTranslator>();
     private static IColumnTranslator defaultTranslator = new DefaultColumnTranslator();
+    public static boolean Debug=false;
 
     public static void register(Class<?> type, IColumnTranslator translator) {
         columnTranslatorHashMap.put(type, translator);

@@ -8,7 +8,9 @@ import android.util.Log;
 import info.breezes.orm.utils.CursorUtils;
 import info.breezes.orm.utils.TableUtils;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
 
 /**
  * Created by Qiao on 2014/5/4.
@@ -17,6 +19,7 @@ public class QueryAble<T> implements Iterable<T>, Iterator<T> {
     private Class<T> table;
     private SQLiteDatabase database;
     private ArrayList<Where> wheres;
+    private ArrayList<Like> likes;
     private ArrayList<OrderBy> orderBys;
     private ArrayList<String> params;
     private Limit limit;
@@ -82,7 +85,9 @@ public class QueryAble<T> implements Iterable<T>, Iterator<T> {
             cursor.close();
         }
         sql = buildSQL();
-        Log.i("ORM QueryAble", sql);
+        if (OrmConfig.Debug) {
+            Log.i("ORM QueryAble", sql);
+        }
         cursor = database.rawQuery(sql, params.toArray(new String[params.size()]));
         if (mContext != null) {
             cursor.setNotificationUri(mContext.getContentResolver(), Uri.parse("content://orm/" + tableName));
@@ -91,7 +96,9 @@ public class QueryAble<T> implements Iterable<T>, Iterator<T> {
         for (int i = 0; i < cursor.getColumnCount(); i++) {
             columnIndex.put(cursor.getColumnName(i), i);
         }
-        Log.d("QueryAble", "execute cost:" + (System.currentTimeMillis() - st));
+        if (OrmConfig.Debug) {
+            Log.d("QueryAble", "execute cost:" + (System.currentTimeMillis() - st));
+        }
         return this;
     }
 
@@ -268,6 +275,11 @@ public class QueryAble<T> implements Iterable<T>, Iterator<T> {
             result = 31 * result + type.hashCode();
             return result;
         }
+    }
+
+    class Like {
+        public String column;
+        public String value;
     }
 
     class Limit {

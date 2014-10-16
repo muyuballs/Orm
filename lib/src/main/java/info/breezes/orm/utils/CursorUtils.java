@@ -1,7 +1,6 @@
 package info.breezes.orm.utils;
 
 import android.database.Cursor;
-import android.graphics.Color;
 import android.util.Log;
 import info.breezes.orm.OrmConfig;
 import info.breezes.orm.annotation.Column;
@@ -31,7 +30,9 @@ public class CursorUtils {
                     }
                 }
             }
-            Log.d("CursorUtils", "readCurrentEntity With ColumnIndexMap cost:" + (System.currentTimeMillis() - st));
+            if(OrmConfig.Debug) {
+                Log.d("CursorUtils", "readCurrentEntity With ColumnIndexMap cost:" + (System.currentTimeMillis() - st));
+            }
             return entity;
         } catch (InstantiationException e) {
             throw new RuntimeException(e);
@@ -64,7 +65,9 @@ public class CursorUtils {
                     }
                 }
             }
-            Log.d("CursorUtils", "readCurrentEntity cost:" + (System.currentTimeMillis() - st));
+            if(OrmConfig.Debug) {
+                Log.d("CursorUtils", "readCurrentEntity cost:" + (System.currentTimeMillis() - st));
+            }
             return entity;
         } catch (InstantiationException e) {
             throw new RuntimeException(e);

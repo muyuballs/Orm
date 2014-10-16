@@ -33,7 +33,7 @@ public class DefaultColumnTranslator implements IColumnTranslator {
         if (float.class.isAssignableFrom(type) || double.class.isAssignableFrom(type) || long.class.isAssignableFrom(type)) {
             return "REAL";
         }
-        if(int.class.isAssignableFrom(type)){
+        if (int.class.isAssignableFrom(type)) {
             return "INTEGER";
         }
         return TextUtils.isEmpty(column.type()) ? "TEXT" : column.type();
@@ -44,7 +44,10 @@ public class DefaultColumnTranslator implements IColumnTranslator {
         try {
             if (Date.class.isAssignableFrom(field.getType())) {
                 Date date = (Date) field.get(obj);
-                return ""+date.getTime();
+                if (date == null) {
+                    return "0";
+                }
+                return "" + date.getTime();
             }
             if (boolean.class.isAssignableFrom(field.getType())) {
                 boolean bool = (Boolean) field.get(obj);

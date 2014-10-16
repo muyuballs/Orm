@@ -11,7 +11,6 @@ import info.breezes.orm.annotation.Column;
 import info.breezes.orm.annotation.Table;
 import info.breezes.orm.translator.IColumnTranslator;
 
-
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -21,7 +20,6 @@ import java.util.Comparator;
  * Created by jianxingqiao on 5/4/2014.
  */
 public class TableUtils {
-
 
     static class Col {
         String name;
@@ -100,10 +98,14 @@ public class TableUtils {
             }
 
             createSql.replace(createSql.length() - 1, createSql.length(), ")");
-            Log.i("ORM Create Table ", createSql.toString());
+            if (OrmConfig.Debug) {
+                Log.i("ORM Create Table[" + database.getPath() + "]", createSql.toString());
+            }
             database.execSQL(createSql.toString());
             for (String str : indexes) {
-                Log.i("ORM Create Index ", str);
+                if (OrmConfig.Debug) {
+                    Log.i("ORM Create Index ", str);
+                }
                 database.execSQL(str);
             }
             return true;
@@ -135,7 +137,9 @@ public class TableUtils {
         insertSql.replace(insertSql.length() - 1, insertSql.length(), ")");
         values.replace(values.length() - 1, values.length(), ")");
         insertSql.append(values);
-        Log.i("ORM Insert Into Table ", insertSql.toString());
+        if (OrmConfig.Debug) {
+            Log.i("ORM Insert Into Table[" + database.getPath() + "]", insertSql.toString());
+        }
         database.execSQL(insertSql.toString(), params.toArray());
         long rowId = getLastInsertRowId(database);
         if (rowId > 0) {
@@ -195,7 +199,9 @@ public class TableUtils {
         params.add(pkValue);
         updateSql.replace(updateSql.length() - 1, updateSql.length(), " ");
         updateSql.append(whereCondition);
-        Log.i("ORM Update Table ", updateSql.toString());
+        if (OrmConfig.Debug) {
+            Log.i("ORM Update Table[" + database.getPath() + "]", updateSql.toString());
+        }
         database.execSQL(updateSql.toString(), params.toArray());
         int changes = getLastChanges(database);
         if (changes > 0) {
@@ -245,7 +251,9 @@ public class TableUtils {
         params.add(pkValue);
         deleteSql.replace(deleteSql.length() - 1, deleteSql.length(), " ");
         deleteSql.append(whereCondition);
-        Log.i("ORM Delete From Table ", deleteSql.toString());
+        if (OrmConfig.Debug) {
+            Log.i("ORM Delete From Table[" + database.getPath() + "]", deleteSql.toString());
+        }
         database.execSQL(deleteSql.toString(), params.toArray());
         int changes = getLastChanges(database);
         if (changes > 0) {
@@ -255,99 +263,198 @@ public class TableUtils {
     }
 
 
+    private static int deleteAllInternal(SQLiteDatabase database, String tableName, Context context) {
+        if (OrmConfig.Debug) {
+            Log.i("ORM Clear Table [" + database.getPath() + "]", "delete from " + tableName + " where 1=1");
+        }
+        database.execSQL("delete from " + tableName + " where 1=1");
+        int changes = getLastChanges(database);
+        if (changes > 0) {
+            notifyChange(tableName, context);
+        }
+        return changes;
+    }
+
     public static long insert(SQLiteDatabase database, Object object, Context context) {
         checkOrmTableInstance(object);
+        boolean innerOpenTransaction = false;
         try {
-            database.beginTransaction();
+            if (!database.inTransaction()) {
+                database.beginTransaction();
+                innerOpenTransaction = true;
+            }
             long rowId = insertInternal(database, object, context);
-            database.setTransactionSuccessful();
+            if (innerOpenTransaction) {
+                database.setTransactionSuccessful();
+            }
             return rowId;
         } finally {
-            database.endTransaction();
+            if (innerOpenTransaction) {
+                database.endTransaction();
+            }
         }
     }
 
     public static int update(SQLiteDatabase database, Object object, Context context) {
         checkOrmTableInstance(object);
+        boolean innerOpenTransaction = false;
         try {
-            database.beginTransaction();
+            if (!database.inTransaction()) {
+                database.beginTransaction();
+                innerOpenTransaction = true;
+            }
             int rowCount = updateInternal(database, object, null, context);
-            database.setTransactionSuccessful();
+            if (innerOpenTransaction) {
+                database.setTransactionSuccessful();
+            }
             return rowCount;
         } finally {
-            database.endTransaction();
+            if (innerOpenTransaction) {
+                database.endTransaction();
+            }
         }
     }
 
     public static long insertOrUpdate(SQLiteDatabase database, Object object, Context context) {
         checkOrmTableInstance(object);
+        boolean innerOpenTransaction = false;
         try {
-            database.beginTransaction();
+            if (!database.inTransaction()) {
+                database.beginTransaction();
+                innerOpenTransaction = true;
+            }
             long count = updateInternal(database, object, null, context);
             if (count < 1) {
                 count = insertInternal(database, object, context);
             }
-            database.setTransactionSuccessful();
+            if (innerOpenTransaction) {
+                database.setTransactionSuccessful();
+            }
             return count;
         } finally {
-            database.endTransaction();
+            if (innerOpenTransaction) {
+                database.endTransaction();
+            }
         }
     }
 
     public static int delete(SQLiteDatabase database, Object object, Context context) {
         checkOrmTableInstance(object);
+        boolean innerOpenTransaction = false;
         try {
-            database.beginTransaction();
+            if (!database.inTransaction()) {
+                database.beginTransaction();
+                innerOpenTransaction = true;
+            }
             int count = deleteInternal(database, object, null, context);
-            database.setTransactionSuccessful();
+            if (innerOpenTransaction) {
+                database.setTransactionSuccessful();
+            }
             return count;
         } finally {
-            database.endTransaction();
+            if (innerOpenTransaction) {
+                database.endTransaction();
+            }
         }
     }
 
     public static int updateBy(SQLiteDatabase database, Object object, String column, Context context) {
         checkOrmTableInstance(object);
+        boolean innerOpenTransaction = false;
         try {
-            database.beginTransaction();
+            if (!database.inTransaction()) {
+                database.beginTransaction();
+                innerOpenTransaction = true;
+            }
             int rowCount = updateInternal(database, object, column, context);
-            database.setTransactionSuccessful();
+            if (innerOpenTransaction) {
+                database.setTransactionSuccessful();
+            }
             return rowCount;
         } finally {
-            database.endTransaction();
+            if (innerOpenTransaction) {
+                database.endTransaction();
+            }
         }
     }
 
     public static int deleteBy(SQLiteDatabase database, Object object, String column, Context context) {
         checkOrmTableInstance(object);
+        boolean innerOpenTransaction = false;
         try {
-            database.beginTransaction();
+            if (!database.inTransaction()) {
+                database.beginTransaction();
+                innerOpenTransaction = true;
+            }
             int count = deleteInternal(database, object, column, context);
-            database.setTransactionSuccessful();
+            if (innerOpenTransaction) {
+                database.setTransactionSuccessful();
+            }
             return count;
         } finally {
-            database.endTransaction();
+            if (innerOpenTransaction) {
+                database.endTransaction();
+            }
         }
     }
 
     public static long[] insertAll(SQLiteDatabase database, Object[] objects, Context context) {
         if (objects != null) {
+            boolean innerOpenTransaction = false;
             try {
-                database.beginTransaction();
+                if (!database.inTransaction()) {
+                    database.beginTransaction();
+                    innerOpenTransaction = true;
+                }
                 long[] rowIds = new long[objects.length];
                 for (int i = 0; i < objects.length; i++) {
                     Object object = objects[i];
                     checkOrmTableInstance(object);
-                    rowIds[i] = insertInternal(database, object, context);
+                    long count = updateInternal(database, object, null, null);
+                    if (count < 1) {
+                        count = insertInternal(database, object, null);
+                        rowIds[i] = getLastInsertRowId(database);
+                    } else {
+                        rowIds[i] = getLastChanges(database);
+                    }
                 }
-                database.setTransactionSuccessful();
+                if (innerOpenTransaction) {
+                    database.setTransactionSuccessful();
+                }
+                String tableName = getTableName(objects[0].getClass());
+                notifyChange(tableName, context);
                 return rowIds;
             } finally {
-                database.endTransaction();
+                if (innerOpenTransaction) {
+                    database.endTransaction();
+                }
             }
         }
         throw new NullPointerException("objects is null");
     }
+
+    public static int clear(SQLiteDatabase database, Class<?> tClass, Context context) {
+        if ((Table) tClass.getAnnotation(Table.class) == null) {
+            throw new RuntimeException(tClass.getName() + " is not an orm table instance.");
+        }
+        boolean innerOpenTransaction = false;
+        try {
+            if (!database.inTransaction()) {
+                database.beginTransaction();
+                innerOpenTransaction = true;
+            }
+            int count = deleteAllInternal(database, getTableName(tClass), context);
+            if (innerOpenTransaction) {
+                database.setTransactionSuccessful();
+            }
+            return count;
+        } finally {
+            if (innerOpenTransaction) {
+                database.endTransaction();
+            }
+        }
+    }
+
 
     public static void checkOrmTableInstance(final Object object) {
         if ((Table) object.getClass().getAnnotation(Table.class) == null) {
@@ -359,7 +466,7 @@ public class TableUtils {
         return getColumnName(field, (Column) field.getAnnotation(Column.class));
     }
 
-    public static String getColumnName(final Field field,final Column column) {
+    public static String getColumnName(final Field field, final Column column) {
         if (column != null) {
             return TextUtils.isEmpty(column.name()) ? field.getName() : column.name();
         } else {
@@ -379,7 +486,7 @@ public class TableUtils {
         }
     }
 
-    private static void notifyChange(final String s,final Context context) {
+    private static void notifyChange(final String s, final Context context) {
         if (context != null && !TextUtils.isEmpty(s)) {
             context.getContentResolver().notifyChange(Uri.parse("content://orm/" + s), null, false);
         }
