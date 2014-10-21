@@ -27,7 +27,7 @@ public @interface Column {
 
     int length() default 1024;
 
-    int number() default 0;
+    int order() default 0;
 
     String comment() default "";
 

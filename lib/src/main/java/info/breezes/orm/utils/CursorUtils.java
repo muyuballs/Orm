@@ -2,6 +2,7 @@ package info.breezes.orm.utils;
 
 import android.database.Cursor;
 import android.util.Log;
+import info.breezes.orm.FCMap;
 import info.breezes.orm.OrmConfig;
 import info.breezes.orm.annotation.Column;
 
@@ -14,6 +15,28 @@ import java.util.Map;
  * Created by Qiao on 2014/5/27.
  */
 public class CursorUtils {
+
+    public static <T> T readCurrentEntity(Class<T> type, Cursor cursor, ArrayList<FCMap> fcMaps) {
+        long st = System.currentTimeMillis();
+        try {
+            T entity = type.newInstance();
+            for (FCMap fcMap : fcMaps) {
+                Object value = fcMap.translator.readColumnValue(cursor, fcMap.index, fcMap.field);
+                if (value != null) {
+                    fcMap.field.set(entity, value);
+                }
+            }
+            if (OrmConfig.Debug) {
+                Log.d("CursorUtils", "readCurrentEntity With ColumnIndexMap cost:" + (System.currentTimeMillis() - st));
+            }
+            return entity;
+        } catch (InstantiationException e) {
+            throw new RuntimeException(e);
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public static <T> T readCurrentEntity(Class<T> type, Cursor cursor, Map<String, Integer> columnIndex) {
         long st = System.currentTimeMillis();
         try {
@@ -30,7 +53,7 @@ public class CursorUtils {
                     }
                 }
             }
-            if(OrmConfig.Debug) {
+            if (OrmConfig.Debug) {
                 Log.d("CursorUtils", "readCurrentEntity With ColumnIndexMap cost:" + (System.currentTimeMillis() - st));
             }
             return entity;
@@ -65,7 +88,7 @@ public class CursorUtils {
                     }
                 }
             }
-            if(OrmConfig.Debug) {
+            if (OrmConfig.Debug) {
                 Log.d("CursorUtils", "readCurrentEntity cost:" + (System.currentTimeMillis() - st));
             }
             return entity;

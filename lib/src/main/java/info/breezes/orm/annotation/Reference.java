@@ -5,4 +5,6 @@ package info.breezes.orm.annotation;
  */
 public @interface Reference {
     Class value();
+
+    String column() default "";
 }

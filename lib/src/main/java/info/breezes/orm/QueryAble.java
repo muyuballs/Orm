@@ -5,9 +5,15 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
 import android.util.Log;
+import info.breezes.orm.annotation.Column;
+import info.breezes.orm.expressions.Limit;
+import info.breezes.orm.expressions.OrderBy;
+import info.breezes.orm.expressions.Where;
+import info.breezes.orm.translator.IColumnTranslator;
 import info.breezes.orm.utils.CursorUtils;
 import info.breezes.orm.utils.TableUtils;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -19,15 +25,15 @@ public class QueryAble<T> implements Iterable<T>, Iterator<T> {
     private Class<T> table;
     private SQLiteDatabase database;
     private ArrayList<Where> wheres;
-    private ArrayList<Like> likes;
     private ArrayList<OrderBy> orderBys;
     private ArrayList<String> params;
     private Limit limit;
     private String sql;
     private Cursor cursor;
-    private HashMap<String, Integer> columnIndex;
     private Context mContext;
     private String tableName;
+
+    private ArrayList<FCMap> fcMaps;
 
     public QueryAble(Class<T> table, SQLiteDatabase database, Context context) {
         this.table = table;
@@ -36,7 +42,7 @@ public class QueryAble<T> implements Iterable<T>, Iterator<T> {
         wheres = new ArrayList<Where>();
         orderBys = new ArrayList<OrderBy>();
         params = new ArrayList<String>();
-        columnIndex = new HashMap<String, Integer>();
+        fcMaps = new ArrayList<FCMap>();
     }
 
     public QueryAble<T> where(String column, Object value, String operation) {
@@ -92,10 +98,23 @@ public class QueryAble<T> implements Iterable<T>, Iterator<T> {
         if (mContext != null) {
             cursor.setNotificationUri(mContext.getContentResolver(), Uri.parse("content://orm/" + tableName));
         }
-        columnIndex.clear();
-        for (int i = 0; i < cursor.getColumnCount(); i++) {
-            columnIndex.put(cursor.getColumnName(i), i);
+        fcMaps.clear();
+        Field fields[] = table.getFields();
+        for (Field field : fields) {
+            Column column = field.getAnnotation(Column.class);
+            if (column != null) {
+                String columnName = TableUtils.getColumnName(field, column);
+                Class<?> fieldType = field.getType();
+                FCMap fcMap = new FCMap();
+                fcMap.field = field;
+                fcMap.translator = OrmConfig.getTranslator(fieldType);
+                fcMap.index = cursor.getColumnIndex(columnName);
+                if (fcMap.index != -1) {
+                    fcMaps.add(fcMap);
+                }
+            }
         }
+
         if (OrmConfig.Debug) {
             Log.d("QueryAble", "execute cost:" + (System.currentTimeMillis() - st));
         }
@@ -185,7 +204,7 @@ public class QueryAble<T> implements Iterable<T>, Iterator<T> {
     }
 
     private T readCurrentEntity() {
-        return CursorUtils.readCurrentEntity(table, cursor, columnIndex);
+        return CursorUtils.readCurrentEntity(table, cursor, fcMaps);
     }
 
     @Override
@@ -211,84 +230,4 @@ public class QueryAble<T> implements Iterable<T>, Iterator<T> {
         throw new RuntimeException("QueryAble is Readonly.");
     }
 
-
-    class Where {
-        public String condition;
-        public String column;
-        public Object value;
-        public String operation;
-
-        Where(String column, Object value, String operation) {
-            this.column = column;
-            this.value = value;
-            this.operation = operation;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-
-            Where where = (Where) o;
-
-            if (!column.equals(where.column)) return false;
-            if (!operation.equals(where.operation)) return false;
-            if (!value.equals(where.value)) return false;
-
-            return true;
-        }
-
-        @Override
-        public int hashCode() {
-            int result = column.hashCode();
-            result = 31 * result + value.hashCode();
-            result = 31 * result + operation.hashCode();
-            return result;
-        }
-    }
-
-    class OrderBy {
-        public String column;
-        public String type;
-
-        OrderBy(String column, String type) {
-            this.column = column;
-            this.type = type;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-
-            OrderBy orderBy = (OrderBy) o;
-
-            if (!column.equals(orderBy.column)) return false;
-            if (!type.equals(orderBy.type)) return false;
-
-            return true;
-        }
-
-        @Override
-        public int hashCode() {
-            int result = column.hashCode();
-            result = 31 * result + type.hashCode();
-            return result;
-        }
-    }
-
-    class Like {
-        public String column;
-        public String value;
-    }
-
-    class Limit {
-        public int start;
-        public int count;
-
-        Limit(int start, int count) {
-            this.start = start;
-            this.count = count;
-        }
-    }
 }

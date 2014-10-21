@@ -65,7 +65,7 @@ public class TableUtils {
             Collections.sort(cols, new Comparator<Col>() {
                 @Override
                 public int compare(Col lhs, Col rhs) {
-                    return lhs.column.number() - rhs.column.number();
+                    return lhs.column.order() - rhs.column.order();
                 }
             });
 
@@ -114,16 +114,16 @@ public class TableUtils {
         }
     }
 
-    private static long insertInternal(SQLiteDatabase database, Object object, Context context) {
-        Table table = (Table) object.getClass().getAnnotation(Table.class);
-        String tableName = getTableName(object.getClass(), table);
-        ArrayList<Object> params = new ArrayList<Object>();
+    private static SQLStruct buildInsertSQL(SQLiteDatabase database, String table, Class<?> tableClass) {
+        SQLStruct statementStruct = new SQLStruct();
+        statementStruct.table = table;
+        ArrayList<Field> params = new ArrayList<Field>();
         StringBuilder values = new StringBuilder(" VALUES(");
         StringBuilder insertSql = new StringBuilder();
         insertSql.append("INSERT INTO ");
-        insertSql.append(tableName);
+        insertSql.append(table);
         insertSql.append("(");
-        Field fields[] = object.getClass().getFields();
+        Field fields[] = tableClass.getFields();
         for (Field field : fields) {
             Column column = (Column) field.getAnnotation(Column.class);
             if (column != null && !column.autoincrement()) {
@@ -131,16 +131,35 @@ public class TableUtils {
                 insertSql.append(getColumnName(field, column));
                 insertSql.append(",");
                 values.append("?,");
-                params.add(translator.getColumnValue(field, object));
+                params.add(field);
             }
         }
         insertSql.replace(insertSql.length() - 1, insertSql.length(), ")");
         values.replace(values.length() - 1, values.length(), ")");
         insertSql.append(values);
-        if (OrmConfig.Debug) {
-            Log.i("ORM Insert Into Table[" + database.getPath() + "]", insertSql.toString());
+        statementStruct.params = params;
+        statementStruct.sql = insertSql.toString();
+        return statementStruct;
+    }
+
+    private static long insertInternal(SQLiteDatabase database, Object object, Context context) {
+        Table table = (Table) object.getClass().getAnnotation(Table.class);
+        String tableName = getTableName(object.getClass(), table);
+        SQLStruct struct = SQLiteSQLCache.getStatement(tableName);
+        if (struct == null) {
+            struct = buildInsertSQL(database, tableName, object.getClass());
+            SQLiteSQLCache.putStatement(struct);
         }
-        database.execSQL(insertSql.toString(), params.toArray());
+
+        ArrayList<Object> params = new ArrayList<Object>();
+
+        for (Field field : struct.params) {
+            params.add(OrmConfig.getTranslator(field.getType()).getColumnValue(field, object));
+        }
+        if (OrmConfig.Debug) {
+            Log.i("ORM Insert Into Table[" + database.getPath() + "]", struct.sql);
+        }
+        database.execSQL(struct.sql, params.toArray());
         long rowId = getLastInsertRowId(database);
         if (rowId > 0) {
             notifyChange(tableName, context);
@@ -399,6 +418,35 @@ public class TableUtils {
     }
 
     public static long[] insertAll(SQLiteDatabase database, Object[] objects, Context context) {
+        if (objects != null) {
+            boolean innerOpenTransaction = false;
+            try {
+                if (!database.inTransaction()) {
+                    database.beginTransaction();
+                    innerOpenTransaction = true;
+                }
+                long[] rowIds = new long[objects.length];
+                for (int i = 0; i < objects.length; i++) {
+                    Object object = objects[i];
+                    checkOrmTableInstance(object);
+                    rowIds[i] = insertInternal(database, object, null);
+                }
+                if (innerOpenTransaction) {
+                    database.setTransactionSuccessful();
+                }
+                String tableName = getTableName(objects[0].getClass());
+                notifyChange(tableName, context);
+                return rowIds;
+            } finally {
+                if (innerOpenTransaction) {
+                    database.endTransaction();
+                }
+            }
+        }
+        throw new NullPointerException("objects is null");
+    }
+
+    public static long[] insertOrUpdateAll(SQLiteDatabase database, Object[] objects, Context context) {
         if (objects != null) {
             boolean innerOpenTransaction = false;
             try {

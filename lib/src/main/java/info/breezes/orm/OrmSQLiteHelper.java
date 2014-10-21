@@ -75,6 +75,25 @@ public abstract class OrmSQLiteHelper extends SQLiteOpenHelper {
         }
     }
 
+    public long[] insertOrUpdateAll(Object[] objects) {
+        SQLiteDatabase database = getCurrentDatabase(true);
+        boolean inTransaction = database.inTransaction();
+        if (!inTransaction) {
+            database.beginTransaction();
+        }
+        try {
+            long[] result = TableUtils.insertOrUpdateAll(database, objects, mContext);
+            if (!inTransaction) {
+                database.setTransactionSuccessful();
+            }
+            return result;
+        } finally {
+            if (!inTransaction) {
+                database.endTransaction();
+            }
+        }
+    }
+
     public int clear(Class<?> tClass) {
         return TableUtils.clear(getCurrentDatabase(true), tClass, mContext);
     }
