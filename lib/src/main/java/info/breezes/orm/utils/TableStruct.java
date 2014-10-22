@@ -10,5 +10,6 @@ import java.util.ArrayList;
 final class TableStruct {
     public String table;
     public String insertSql;
+    public String updateSql;
     public ArrayList<FCMap> fcmaps;
 }
