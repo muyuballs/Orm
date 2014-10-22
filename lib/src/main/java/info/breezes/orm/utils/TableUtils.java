@@ -6,6 +6,8 @@ import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
 import android.text.TextUtils;
 import android.util.Log;
+
+import info.breezes.orm.FCMap;
 import info.breezes.orm.OrmConfig;
 import info.breezes.orm.annotation.Column;
 import info.breezes.orm.annotation.Table;
@@ -114,55 +116,19 @@ public class TableUtils {
         }
     }
 
-    private static SQLStruct buildInsertSQL(SQLiteDatabase database, String table, Class<?> tableClass) {
-        SQLStruct statementStruct = new SQLStruct();
-        statementStruct.table = table;
-        ArrayList<Field> params = new ArrayList<Field>();
-        StringBuilder values = new StringBuilder(" VALUES(");
-        StringBuilder insertSql = new StringBuilder();
-        insertSql.append("INSERT INTO ");
-        insertSql.append(table);
-        insertSql.append("(");
-        Field fields[] = tableClass.getFields();
-        for (Field field : fields) {
-            Column column = (Column) field.getAnnotation(Column.class);
-            if (column != null && !column.autoincrement()) {
-                IColumnTranslator translator = OrmConfig.getTranslator(field.getType());
-                insertSql.append(getColumnName(field, column));
-                insertSql.append(",");
-                values.append("?,");
-                params.add(field);
-            }
-        }
-        insertSql.replace(insertSql.length() - 1, insertSql.length(), ")");
-        values.replace(values.length() - 1, values.length(), ")");
-        insertSql.append(values);
-        statementStruct.params = params;
-        statementStruct.sql = insertSql.toString();
-        return statementStruct;
-    }
-
     private static long insertInternal(SQLiteDatabase database, Object object, Context context) {
-        Table table = (Table) object.getClass().getAnnotation(Table.class);
-        String tableName = getTableName(object.getClass(), table);
-        SQLStruct struct = SQLiteSQLCache.getStatement(tableName);
-        if (struct == null) {
-            struct = buildInsertSQL(database, tableName, object.getClass());
-            SQLiteSQLCache.putStatement(struct);
-        }
-
+        TableStruct struct = buildTableStruct(object.getClass());
         ArrayList<Object> params = new ArrayList<Object>();
-
-        for (Field field : struct.params) {
-            params.add(OrmConfig.getTranslator(field.getType()).getColumnValue(field, object));
+        for (FCMap fcmap : struct.fcmaps) {
+            params.add(fcmap.translator.getColumnValue(fcmap.field, object));
         }
         if (OrmConfig.Debug) {
-            Log.i("ORM Insert Into Table[" + database.getPath() + "]", struct.sql);
+            Log.i("ORM Insert Into Table[" + database.getPath() + "]", struct.insertSql);
         }
-        database.execSQL(struct.sql, params.toArray());
+        database.execSQL(struct.insertSql, params.toArray());
         long rowId = getLastInsertRowId(database);
         if (rowId > 0) {
-            notifyChange(tableName, context);
+            notifyChange(struct.table, context);
         }
         return rowId;
 
@@ -179,40 +145,34 @@ public class TableUtils {
     }
 
     private static int updateInternal(SQLiteDatabase database, Object object, String baseColumn, Context context) {
-        Table table = (Table) object.getClass().getAnnotation(Table.class);
-        String tableName = getTableName(object.getClass(), table);
+        TableStruct tableStruct = buildTableStruct(object.getClass());
         ArrayList<Object> params = new ArrayList<Object>();
         StringBuilder whereCondition = new StringBuilder(" WHERE ");
         Object pkValue = null;
         StringBuilder updateSql = new StringBuilder();
         updateSql.append("UPDATE ");
-        updateSql.append(tableName);
+        updateSql.append(tableStruct.table);
         updateSql.append(" SET ");
-        Field fields[] = object.getClass().getFields();
-        for (Field field : fields) {
-            Column column = (Column) field.getAnnotation(Column.class);
-            if (column != null) {
-                IColumnTranslator translator = OrmConfig.getTranslator(field.getType());
-                String columnName = getColumnName(field, column);
-                if (baseColumn != null) {
-                    if (columnName.equals(baseColumn)) {
-                        whereCondition.append(columnName);
-                        whereCondition.append("=?");
-                        pkValue = translator.getColumnValue(field, object);
-                    } else if (!column.autoincrement()) {
-                        updateSql.append(columnName);
-                        updateSql.append("=?,");
-                        params.add(translator.getColumnValue(field, object));
-                    }
-                } else if (!column.autoincrement() && !column.primaryKey()) {
-                    updateSql.append(columnName);
-                    updateSql.append("=?,");
-                    params.add(translator.getColumnValue(field, object));
-                } else if (column.primaryKey()) {
+        for (FCMap fcmap : tableStruct.fcmaps) {
+            String columnName = fcmap.columnName;
+            if (baseColumn != null) {
+                if (columnName.equals(baseColumn)) {
                     whereCondition.append(columnName);
                     whereCondition.append("=?");
-                    pkValue = translator.getColumnValue(field, object);
+                    pkValue = fcmap.translator.getColumnValue(fcmap.field, object);
+                } else if (!fcmap.column.autoincrement()) {
+                    updateSql.append(columnName);
+                    updateSql.append("=?,");
+                    params.add(fcmap.translator.getColumnValue(fcmap.field, object));
                 }
+            } else if (!fcmap.column.autoincrement() && !fcmap.column.primaryKey()) {
+                updateSql.append(columnName);
+                updateSql.append("=?,");
+                params.add(fcmap.translator.getColumnValue(fcmap.field, object));
+            } else if (fcmap.column.primaryKey()) {
+                whereCondition.append(columnName);
+                whereCondition.append("=?");
+                pkValue = fcmap.translator.getColumnValue(fcmap.field, object);
             }
         }
         params.add(pkValue);
@@ -224,7 +184,7 @@ public class TableUtils {
         database.execSQL(updateSql.toString(), params.toArray());
         int changes = getLastChanges(database);
         if (changes > 0) {
-            notifyChange(tableName, context);
+            notifyChange(tableStruct.table, context);
         }
         return changes;
     }
@@ -258,12 +218,12 @@ public class TableUtils {
                     whereCondition.append(getColumnName(field, column));
                     whereCondition.append("=?");
                     pkValue = translator.getColumnValue(field, object);
-                    break;//单字段主键,找到后立即结束查找
+                    break;// 单字段主键,找到后立即结束查找
                 } else if (column.primaryKey()) {
                     whereCondition.append(getColumnName(field, column));
                     whereCondition.append("=?");
                     pkValue = translator.getColumnValue(field, object);
-                    break;//单字段主键,找到后立即结束查找
+                    break;// 单字段主键,找到后立即结束查找
                 }
             }
         }
@@ -281,10 +241,10 @@ public class TableUtils {
         return changes;
     }
 
-
-    private static int deleteAllInternal(SQLiteDatabase database, String tableName, Context context) {
+    private static int deleteAllInternal(SQLiteDatabase database,
+                                         String tableName, Context context) {
         if (OrmConfig.Debug) {
-            Log.i("ORM Clear Table [" + database.getPath() + "]", "delete from " + tableName + " where 1=1");
+            Log.i("ORM Clear Table [" + database.getPath() + "]",  "delete from " + tableName + " where 1=1");
         }
         database.execSQL("delete from " + tableName + " where 1=1");
         int changes = getLastChanges(database);
@@ -294,7 +254,8 @@ public class TableUtils {
         return changes;
     }
 
-    public static long insert(SQLiteDatabase database, Object object, Context context) {
+    public static long insert(SQLiteDatabase database, Object object,
+                              Context context) {
         checkOrmTableInstance(object);
         boolean innerOpenTransaction = false;
         try {
@@ -357,7 +318,7 @@ public class TableUtils {
         }
     }
 
-    public static int delete(SQLiteDatabase database, Object object, Context context) {
+    public static int delete(SQLiteDatabase database, Object object,  Context context) {
         checkOrmTableInstance(object);
         boolean innerOpenTransaction = false;
         try {
@@ -397,7 +358,7 @@ public class TableUtils {
         }
     }
 
-    public static int deleteBy(SQLiteDatabase database, Object object, String column, Context context) {
+    public static int deleteBy(SQLiteDatabase database, Object object,  String column, Context context) {
         checkOrmTableInstance(object);
         boolean innerOpenTransaction = false;
         try {
@@ -481,7 +442,7 @@ public class TableUtils {
         throw new NullPointerException("objects is null");
     }
 
-    public static int clear(SQLiteDatabase database, Class<?> tClass, Context context) {
+    public static int clear(SQLiteDatabase database, Class<?> tClass,  Context context) {
         if ((Table) tClass.getAnnotation(Table.class) == null) {
             throw new RuntimeException(tClass.getName() + " is not an orm table instance.");
         }
@@ -491,7 +452,8 @@ public class TableUtils {
                 database.beginTransaction();
                 innerOpenTransaction = true;
             }
-            int count = deleteAllInternal(database, getTableName(tClass), context);
+            int count = deleteAllInternal(database, getTableName(tClass),
+                    context);
             if (innerOpenTransaction) {
                 database.setTransactionSuccessful();
             }
@@ -502,7 +464,6 @@ public class TableUtils {
             }
         }
     }
-
 
     public static void checkOrmTableInstance(final Object object) {
         if ((Table) object.getClass().getAnnotation(Table.class) == null) {
@@ -530,8 +491,49 @@ public class TableUtils {
         if (table != null) {
             return TextUtils.isEmpty(table.name()) ? tableClass.getSimpleName() : table.name();
         } else {
-            throw new RuntimeException(tableClass.getName() + " is not an orm table.");
+            throw new RuntimeException(tableClass.getName()  + " is not an orm table.");
         }
+    }
+
+    public static TableStruct buildTableStruct(Class<?> tableClass) {
+        Table table = (Table) tableClass.getAnnotation(Table.class);
+        String tableName = getTableName(tableClass, table);
+        TableStruct tableStruct = TableStructCache.get(tableName);
+        if (tableStruct != null) {
+            return tableStruct;
+        }
+        tableStruct = new TableStruct();
+        tableStruct.table = tableName;
+        ArrayList<FCMap> fcmaps = new ArrayList<FCMap>();
+        StringBuilder values = new StringBuilder(" VALUES(");
+        StringBuilder insertSql = new StringBuilder();
+        insertSql.append("INSERT INTO ");
+        insertSql.append(tableName);
+        insertSql.append("(");
+        Field fields[] = tableClass.getFields();
+        int i = 0;
+        for (Field field : fields) {
+            Column column = (Column) field.getAnnotation(Column.class);
+            if (column != null && !column.autoincrement()) {
+                FCMap fcmap = new FCMap();
+                fcmap.field = field;
+                fcmap.columnName = getColumnName(field, column);
+                fcmap.translator = OrmConfig.getTranslator(field.getType());
+                fcmap.index = i++;
+                fcmap.column = column;
+                insertSql.append(fcmap.columnName);
+                insertSql.append(",");
+                values.append("?,");
+                fcmaps.add(fcmap);
+            }
+        }
+        insertSql.replace(insertSql.length() - 1, insertSql.length(), ")");
+        values.replace(values.length() - 1, values.length(), ")");
+        insertSql.append(values);
+        tableStruct.fcmaps = fcmaps;
+        tableStruct.insertSql = insertSql.toString();
+        TableStructCache.put(tableStruct);
+        return tableStruct;
     }
 
     private static void notifyChange(final String s, final Context context) {

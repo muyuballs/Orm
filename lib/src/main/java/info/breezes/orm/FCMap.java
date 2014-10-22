@@ -1,5 +1,6 @@
 package info.breezes.orm;
 
+import info.breezes.orm.annotation.Column;
 import info.breezes.orm.translator.IColumnTranslator;
 
 import java.lang.reflect.Field;
@@ -9,7 +10,9 @@ import java.lang.reflect.Field;
  */
 public class FCMap {
     public Field field;
-    public IColumnTranslator translator;
     public int index;
+    public String columnName;
+    public Column column;
+    public IColumnTranslator translator;
     public boolean blob;
 }
