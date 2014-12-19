@@ -31,10 +31,13 @@ Orm [![Build Status](https://travis-ci.org/xbreezes/Orm.svg?branch=master)](http
 2.创建表
 
  * 一气呵成
+ 
 ```java
     SimpleOrmSQLiteHelper helper=new SimpleOrmSQLiteHelper(context,"demo.db",1,Demo.class);
 ```
+
  * 在onCreate中创建
+ 
 ```java
     class DemoHelper extends SimpleOrmSQLiteHelper{
      ...
@@ -44,15 +47,20 @@ Orm [![Build Status](https://travis-ci.org/xbreezes/Orm.svg?branch=master)](http
      ...
     }
 ```
-3. CURD 操作
+
+3.CURD 操作
+
  * 插入
+
 ```java
     Demo demo=new Demo();
     demo.name="hello"
     demo.arg=12;
     helper.insert(demo);
 ```
+
  * 批量插入
+
  ```java
     ArrayList<Demo> demos=new ArrayList<>();
     for(int i=0;i<10;i++){
@@ -63,7 +71,9 @@ Orm [![Build Status](https://travis-ci.org/xbreezes/Orm.svg?branch=master)](http
     }
     helper.insertAll(demos.toArray());
  ```
+
  * 查询
+
     ```java
     //获取第一个
      Demo demo=helper.query(Demo.class).execute().first();
@@ -76,7 +86,9 @@ Orm [![Build Status](https://travis-ci.org/xbreezes/Orm.svg?branch=master)](http
      //条件查询
      Demo demo=helper.query(Demo.class).where("age",12,"=").execute().first();
     ```
+
  * 删除
+
  ```java
  Demo demo=new Demo();
  demo.id=1;
@@ -88,7 +100,9 @@ Orm [![Build Status](https://travis-ci.org/xbreezes/Orm.svg?branch=master)](http
  //按自定义字段删除
  helper.deleteBy(demo,"name);
  ```
+
  * 修改
+
  ```java
  Demo demo=helper.query(Demo.class).execute().first();
  demo.name="hello1"
