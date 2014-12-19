@@ -1,7 +1,7 @@
 Orm [![Build Status](https://travis-ci.org/xbreezes/Orm.svg?branch=master)](https://travis-ci.org/xbreezes/Orm)
 -----
 
-零配置android简单rom框架
+零配置android简单数据库操作框架
 
 #### 功能简介
 
