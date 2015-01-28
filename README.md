@@ -1,4 +1,4 @@
-Orm [![Build Status](https://travis-ci.org/xbreezes/Orm.svg?branch=master)](https://travis-ci.org/xbreezes/Orm)
+Orm [![Build Status](https://travis-ci.org/xbreezes/Orm.svg?branch=master)](https://travis-ci.org/xbreezes/Orm)  [![Coverage Status](https://coveralls.io/repos/xbreezes/Orm/badge.svg)](https://coveralls.io/r/xbreezes/Orm)
 -----
 
 零配置android简单数据库操作框架
