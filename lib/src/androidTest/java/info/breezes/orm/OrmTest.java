@@ -16,13 +16,9 @@
 
 package info.breezes.orm;
 
-import android.annotation.TargetApi;
-import android.app.Application;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Build;
 import android.test.AndroidTestCase;
-import android.test.ApplicationTestCase;
-import android.test.suitebuilder.annotation.MediumTest;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.Log;
 
@@ -104,15 +100,20 @@ public class OrmTest extends AndroidTestCase {
         over = true;
     }
 
-    @TargetApi(Build.VERSION_CODES.JELLY_BEAN)
+    //@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
     @Override
     protected void tearDown() throws Exception {
         Log.d(TAG, "tearDown");
         if (over) {
+            helper.close();
             Log.d(TAG, "Clean.");
             File file = new File(helper.getCurrentDatabase(false).getPath());
             helper.getCurrentDatabase(false).close();
-            SQLiteDatabase.deleteDatabase(file);
+            if(Build.VERSION.SDK_INT>= Build.VERSION_CODES.JELLY_BEAN) {
+                SQLiteDatabase.deleteDatabase(file);
+            }else{
+                file.delete();
+            }
         }
         super.tearDown();
     }
