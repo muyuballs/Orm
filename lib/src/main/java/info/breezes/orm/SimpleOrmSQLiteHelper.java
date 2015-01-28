@@ -1,14 +1,29 @@
+/*
+ * Copyright (c) 2014-2015, Qiao
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the LICENSE
+ */
+
 package info.breezes.orm;
 
+import android.annotation.TargetApi;
 import android.content.Context;
 import android.database.DatabaseErrorHandler;
 import android.database.sqlite.SQLiteDatabase;
+import android.os.Build;
 import android.util.Log;
 import info.breezes.orm.utils.TableUtils;
 
-/**
- * Created by Qiao on 14-6-15.
- */
 public class SimpleOrmSQLiteHelper extends OrmSQLiteHelper {
 
     public static final String TAG = "SimpleOrmSQLiteHelper";
@@ -16,14 +31,16 @@ public class SimpleOrmSQLiteHelper extends OrmSQLiteHelper {
     private Class<?>[] tables;
 
     public SimpleOrmSQLiteHelper(Context context, String name, int version, Class<?>... tables) {
-        this(context, name, null, version);
+        super(context, name, null, version);
         this.tables = tables;
     }
 
-    public SimpleOrmSQLiteHelper(Context context, String name, SQLiteDatabase.CursorFactory factory, int version) {
-        this(context, name, factory, version, null);
+    public SimpleOrmSQLiteHelper(Context context, String name, SQLiteDatabase.CursorFactory factory, int version,Class<?>... tables) {
+        super(context, name, factory, version);
+        this.tables = tables;
     }
 
+    @TargetApi(Build.VERSION_CODES.HONEYCOMB)
     public SimpleOrmSQLiteHelper(Context context, String name, SQLiteDatabase.CursorFactory factory, int version, DatabaseErrorHandler errorHandler) {
         super(context, name, factory, version, errorHandler);
     }
@@ -72,6 +89,5 @@ public class SimpleOrmSQLiteHelper extends OrmSQLiteHelper {
 
     public void rollback() {
         database.endTransaction();
-        ;
     }
 }

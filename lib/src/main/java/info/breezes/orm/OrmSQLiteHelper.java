@@ -1,22 +1,38 @@
+/*
+ * Copyright (c) 2014-2015, Qiao
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the LICENSE
+ */
+
 package info.breezes.orm;
 
+import android.annotation.TargetApi;
 import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
-import info.breezes.orm.utils.TableUtils;
+import android.os.Build;
 
-/**
- * Created by jianxingqiao on 5/4/2014.
- */
+import info.breezes.orm.utils.TableUtils;
 
 public abstract class OrmSQLiteHelper extends SQLiteOpenHelper {
 
     private Context mContext;
 
     public OrmSQLiteHelper(Context context, String name, SQLiteDatabase.CursorFactory factory, int version) {
-        this(context, name, factory, version, null);
+        super(context, name, factory, version);
     }
 
+    @TargetApi(Build.VERSION_CODES.HONEYCOMB)
     public OrmSQLiteHelper(Context context, String name, SQLiteDatabase.CursorFactory factory, int version, android.database.DatabaseErrorHandler errorHandler) {
         super(context, name, factory, version, errorHandler);
         this.mContext = context;
