@@ -18,6 +18,7 @@ package info.breezes.orm.translator;
 
 import android.database.Cursor;
 import android.text.TextUtils;
+
 import info.breezes.orm.annotation.Column;
 
 import java.lang.reflect.Field;
@@ -28,6 +29,15 @@ public class DefaultColumnTranslator implements IColumnTranslator {
     @Override
     public String getColumnType(Field field, Column column) {
         Class<?> type = field.getType();
+        if (String.class.isAssignableFrom(type)) {
+            return "NVARCHAR";
+        }
+        if (int.class.isAssignableFrom(type)) {
+            return "INTEGER";
+        }
+        if (float.class.isAssignableFrom(type) || double.class.isAssignableFrom(type) || long.class.isAssignableFrom(type)) {
+            return "REAL";
+        }
         if (byte[].class.isAssignableFrom(type)) {
             return "BLOB";
         }
@@ -37,16 +47,7 @@ public class DefaultColumnTranslator implements IColumnTranslator {
         if (column.autoincrement() && column.primaryKey()) {
             return "INTEGER";
         }
-        if (String.class.isAssignableFrom(type)) {
-            return "NVARCHAR";
-        }
         if (boolean.class.isAssignableFrom(type)) {
-            return "INTEGER";
-        }
-        if (float.class.isAssignableFrom(type) || double.class.isAssignableFrom(type) || long.class.isAssignableFrom(type)) {
-            return "REAL";
-        }
-        if (int.class.isAssignableFrom(type)) {
             return "INTEGER";
         }
         return TextUtils.isEmpty(column.type()) ? "TEXT" : column.type();
@@ -75,7 +76,9 @@ public class DefaultColumnTranslator implements IColumnTranslator {
     @Override
     public Object readColumnValue(Cursor cursor, int index, Field field) {
         Class<?> type = field.getType();
-        if (int.class.isAssignableFrom(type)) {
+        if (String.class.isAssignableFrom(type)) {
+            return cursor.getString(index);
+        } else if (int.class.isAssignableFrom(type)) {
             return cursor.getInt(index);
         } else if (long.class.isAssignableFrom(type)) {
             return cursor.getLong(index);
@@ -83,8 +86,6 @@ public class DefaultColumnTranslator implements IColumnTranslator {
             return cursor.getFloat(index);
         } else if (double.class.isAssignableFrom(type)) {
             return cursor.getDouble(index);
-        } else if (String.class.isAssignableFrom(type)) {
-            return cursor.getString(index);
         } else if (byte[].class.isAssignableFrom(type)) {
             return cursor.getBlob(index);
         } else if (Date.class.isAssignableFrom(type)) {

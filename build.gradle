@@ -14,19 +14,29 @@
  * limitations under the LICENSE
  */
 
-// Top-level build file where you can add configuration options common to all sub-projects/modules.
-
 buildscript {
     repositories {
+        jcenter()
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:1.0.0'
+        classpath 'com.android.tools.build:gradle:1.1.0'
+//        classpath 'org.kt3k.gradle.plugin:coveralls-gradle-plugin:2.0.1'
     }
 }
 
 allprojects {
     repositories {
-        mavenCentral()
+        jcenter()
     }
 }
+
+//jacocoTestReport {
+//    reports {
+//        xml.enabled = true // coveralls plugin depends on xml format report
+//        html.enabled = true
+//    }
+//}
+
+//after_success:
+//./gradlew jacocoTestReport coveralls

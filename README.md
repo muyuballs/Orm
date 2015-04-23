@@ -110,7 +110,24 @@ Orm [![Build Status](https://travis-ci.org/xbreezes/Orm.svg?branch=master)](http
  helper.insertOrUpdate(demo);
  ```
 
+ * 其他
+
+ ```java
+ //关闭反馈URD影响的结果,提升效率
+ OrmConfig.Response=false;
+ //关闭反馈URD影响的结果,提升效率
+ OrmConfig.Notify=false;
+ ```
+
 #### 版本更新
+
+  * 2015-04-23
+
+    >优化插入效率
+
+    >增加notifyChange开关
+
+    >增加是否返回URD影响结果的开关
 
   * 2014-10-22
   

@@ -25,17 +25,20 @@ import java.util.HashMap;
 public final class OrmConfig {
     private static HashMap<Class<?>, IColumnTranslator> columnTranslatorHashMap = new HashMap<Class<?>, IColumnTranslator>();
     private static IColumnTranslator defaultTranslator = new DefaultColumnTranslator();
-    public static boolean Debug=false;
+    public static boolean Debug = false;
+    public static boolean Emulate = false;
+    public static boolean Response = true;
+    public static boolean Notify = true;
 
     public static void register(Class<?> type, IColumnTranslator translator) {
         columnTranslatorHashMap.put(type, translator);
     }
 
     public static IColumnTranslator getTranslator(Class<?> type) {
-        IColumnTranslator iColumnTranslator=columnTranslatorHashMap.get(type);
-        if( iColumnTranslator==null){
-            iColumnTranslator=columnTranslatorHashMap.get(Object.class);
+        IColumnTranslator iColumnTranslator = columnTranslatorHashMap.get(type);
+        if (iColumnTranslator == null) {
+            iColumnTranslator = columnTranslatorHashMap.get(Object.class);
         }
-        return iColumnTranslator==null?defaultTranslator:iColumnTranslator;
+        return iColumnTranslator == null ? defaultTranslator : iColumnTranslator;
     }
 }

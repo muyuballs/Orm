@@ -28,4 +28,5 @@ public class FCMap {
     public Column column;
     public IColumnTranslator translator;
     public boolean blob;
+    public boolean autoincrement;
 }
