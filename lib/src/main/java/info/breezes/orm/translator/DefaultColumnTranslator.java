@@ -59,9 +59,9 @@ public class DefaultColumnTranslator implements IColumnTranslator {
             if (Date.class.isAssignableFrom(field.getType())) {
                 Date date = (Date) field.get(obj);
                 if (date == null) {
-                    return "0";
+                    return 0;
                 }
-                return "" + date.getTime();
+                return date.getTime();
             }
             if (boolean.class.isAssignableFrom(field.getType())) {
                 boolean bool = (Boolean) field.get(obj);
@@ -89,7 +89,7 @@ public class DefaultColumnTranslator implements IColumnTranslator {
         } else if (byte[].class.isAssignableFrom(type)) {
             return cursor.getBlob(index);
         } else if (Date.class.isAssignableFrom(type)) {
-            return parseToDate(cursor.getString(index));
+            return parseToDate(cursor.getLong(index));
         } else if (boolean.class.isAssignableFrom(type)) {
             return cursor.getInt(index) == 1;
         } else {
@@ -97,12 +97,7 @@ public class DefaultColumnTranslator implements IColumnTranslator {
         }
     }
 
-    private Date parseToDate(String string) {
-        if (string == null) {
-            return null;
-        } else {
-            long time = Long.parseLong(string);
-            return new Date(time);
-        }
+    private Date parseToDate(long time) {
+        return new Date(time);
     }
 }

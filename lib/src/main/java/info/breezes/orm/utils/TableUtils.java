@@ -19,14 +19,17 @@ package info.breezes.orm.utils;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteStatement;
 import android.net.Uri;
 import android.text.TextUtils;
 import android.util.Log;
 
+import java.io.Closeable;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 
 import info.breezes.orm.FCMap;
 import info.breezes.orm.OrmConfig;
@@ -132,41 +135,40 @@ public class TableUtils {
         }
     }
 
-    private static <T> long insertInternal(SQLiteDatabase database, TableStruct struct, T entity, Context context) {
-        if (OrmConfig.Debug) {
-            Log.i("ORM Insert Into Table[" + database.getPath() + "]", struct.insertSql);
-        }
-        ArrayList<Object> params = new ArrayList<>();
+    private static <T> long insertInternal(SQLiteStatement statement, TableStruct struct, T entity) {
+        int index = 0;
         for (FCMap fcmap : struct.fcmaps) {
-            if (!fcmap.autoincrement ){
-                params.add(fcmap.translator.getColumnValue(fcmap.field, entity));
+            if (!fcmap.autoincrement) {
+                bindArg(++index, statement, fcmap.dataType, fcmap.translator.getColumnValue(fcmap.field, entity));
             }
         }
         if (!OrmConfig.Emulate) {
-            database.execSQL(struct.insertSql, params.toArray());
-            long rowId = getLastInsertRowId(database);
-            if (rowId > 0) {
-                notifyChange(struct.table, context);
-            }
-            return rowId;
+            return statement.executeInsert();
         }
         return 0;
     }
 
-    private static long getLastInsertRowId(SQLiteDatabase database) {
-        if (!OrmConfig.Response) {
-            return -1;
+    private static <T> int updateInternal(SQLiteDatabase database, SQLiteStatement statement, TableStruct struct, T entity) {
+        Object pkValue = null;
+        FCMap.DataType pkType = FCMap.DataType.String;
+        int index = 0;
+        for (FCMap fcmap : struct.fcmaps) {
+            if (fcmap.column.primaryKey()) {
+                pkType = fcmap.dataType;
+                pkValue = fcmap.translator.getColumnValue(fcmap.field, entity);
+            } else {
+                bindArg(++index, statement, fcmap.dataType, fcmap.translator.getColumnValue(fcmap.field, entity));
+            }
         }
-        Cursor cursor = database.rawQuery("select last_insert_rowid()", null);
-        if (cursor.moveToNext()) {
-            long rowId = cursor.getLong(0);
-            cursor.close();
-            return rowId;
+        bindArg(++index, statement, pkType, pkValue);
+        if (!OrmConfig.Emulate) {
+            statement.execute();
+            return getLastChanges(database);
         }
-        return -1;
+        return 0;
     }
 
-    private static <T> int updateInternal(SQLiteDatabase database, TableStruct struct, T object, String baseColumn, Context context) {
+    private static <T> int updateInternal(SQLiteDatabase database, TableStruct struct, T object, String baseColumn) {
         ArrayList<Object> params = new ArrayList<>();
         Object pkValue = null;
         String sql;
@@ -208,11 +210,7 @@ public class TableUtils {
         }
         if (!OrmConfig.Emulate) {
             database.execSQL(sql, params.toArray());
-            int changes = getLastChanges(database);
-            if (changes > 0) {
-                notifyChange(struct.table, context);
-            }
-            return changes;
+            return getLastChanges(database);
         }
         return 0;
     }
@@ -230,7 +228,7 @@ public class TableUtils {
         return -1;
     }
 
-    private static int deleteInternal(SQLiteDatabase database, Object object, String baseColumn, Context context) {
+    private static int deleteInternal(SQLiteDatabase database, Object object, String baseColumn) {
         Table table = object.getClass().getAnnotation(Table.class);
         ArrayList<Object> params = new ArrayList<>();
         StringBuilder whereCondition = new StringBuilder(" WHERE ");
@@ -265,26 +263,15 @@ public class TableUtils {
         }
         if (!OrmConfig.Emulate) {
             database.execSQL(deleteSql.toString(), params.toArray());
-            int changes = getLastChanges(database);
-            if (changes > 0) {
-                notifyChange(tableName, context);
-            }
-            return changes;
+            return getLastChanges(database);
         }
         return 0;
     }
 
-    private static int deleteAllInternal(SQLiteDatabase database, String tableName, Context context) {
-        if (OrmConfig.Debug) {
-            Log.i("ORM Clear Table [" + database.getPath() + "]", "delete from " + tableName + " where 1=1");
-        }
+    private static int deleteAllInternal(SQLiteDatabase database, String tableName) {
         if (!OrmConfig.Emulate) {
             database.execSQL("delete from " + tableName + " where 1=1");
-            int changes = getLastChanges(database);
-            if (changes > 0) {
-                notifyChange(tableName, context);
-            }
-            return changes;
+            return getLastChanges(database);
         }
         return 0;
     }
@@ -298,9 +285,19 @@ public class TableUtils {
                 innerOpenTransaction = true;
             }
             TableStruct struct = buildTableStruct(entity.getClass());
-            long rowId = insertInternal(database, struct, entity, context);
+            SQLiteStatement statement = null;
+            long rowId = -1;
+            try {
+                statement = database.compileStatement(struct.insertSql);
+                rowId = insertInternal(statement, struct, entity);
+            } finally {
+                safeClose(statement);
+            }
             if (innerOpenTransaction) {
                 database.setTransactionSuccessful();
+            }
+            if (OrmConfig.Notify && rowId != -1) {
+                notifyChange(struct.table, context);
             }
             return rowId;
         } finally {
@@ -319,9 +316,12 @@ public class TableUtils {
                 innerOpenTransaction = true;
             }
             TableStruct struct = buildTableStruct(entity.getClass());
-            int rowCount = updateInternal(database, struct, entity, null, context);
+            int rowCount = updateInternal(database, struct, entity, null);
             if (innerOpenTransaction) {
                 database.setTransactionSuccessful();
+            }
+            if (OrmConfig.Notify && rowCount > 0) {
+                notifyChange(struct.table, context);
             }
             return rowCount;
         } finally {
@@ -340,14 +340,24 @@ public class TableUtils {
                 innerOpenTransaction = true;
             }
             TableStruct struct = buildTableStruct(entity.getClass());
-            long count = updateInternal(database, struct, entity, null, context);
-            if (count < 1) {
-                count = insertInternal(database, struct, entity, context);
+            SQLiteStatement statement = null;
+            SQLiteStatement statementUpdate = null;
+            long result = -1;
+            try {
+                statement = database.compileStatement(struct.insertSql);
+                statementUpdate = database.compileStatement(struct.updateSql);
+                result = updateInternal(database, statementUpdate, struct, entity);
+                if (result < 1) {
+                    result = insertInternal(statement, struct, entity);
+                }
+                if (OrmConfig.Notify && result != 0) {
+                    notifyChange(struct.table, context);
+                }
+            } finally {
+                safeClose(statement);
+                safeClose(statementUpdate);
             }
-            if (innerOpenTransaction) {
-                database.setTransactionSuccessful();
-            }
-            return count;
+            return result;
         } finally {
             if (innerOpenTransaction) {
                 database.endTransaction();
@@ -363,9 +373,12 @@ public class TableUtils {
                 database.beginTransaction();
                 innerOpenTransaction = true;
             }
-            int count = deleteInternal(database, object, null, context);
+            int count = deleteInternal(database, object, null);
             if (innerOpenTransaction) {
                 database.setTransactionSuccessful();
+            }
+            if (OrmConfig.Notify && count > 0) {
+                notifyChange(getTableName(object.getClass()), context);
             }
             return count;
         } finally {
@@ -384,9 +397,12 @@ public class TableUtils {
                 innerOpenTransaction = true;
             }
             TableStruct struct = buildTableStruct(entity.getClass());
-            int rowCount = updateInternal(database, struct, entity, column, context);
+            int rowCount = updateInternal(database, struct, entity, column);
             if (innerOpenTransaction) {
                 database.setTransactionSuccessful();
+            }
+            if (OrmConfig.Notify && rowCount > 0) {
+                notifyChange(struct.table, context);
             }
             return rowCount;
         } finally {
@@ -404,9 +420,12 @@ public class TableUtils {
                 database.beginTransaction();
                 innerOpenTransaction = true;
             }
-            int count = deleteInternal(database, object, column, context);
+            int count = deleteInternal(database, object, column);
             if (innerOpenTransaction) {
                 database.setTransactionSuccessful();
+            }
+            if (OrmConfig.Notify && count > 0) {
+                notifyChange(getTableName(object.getClass()), context);
             }
             return count;
         } finally {
@@ -428,8 +447,15 @@ public class TableUtils {
                 if (objects.length > 0) {
                     checkOrmTableInstance(objects[0]);
                     TableStruct struct = buildTableStruct(objects[0].getClass());
-                    for (int i = 0; i < objects.length; i++) {
-                        rowIds[i] = insertInternal(database, struct, objects[i], null);
+                    SQLiteStatement statement = null;
+                    try {
+                        statement = database.compileStatement(struct.insertSql);
+                        for (int i = 0; i < objects.length; i++) {
+                            rowIds[i] = insertInternal(statement, struct, objects[i]);
+                        }
+                    } finally {
+
+                        safeClose(statement);
                     }
                     if (!OrmConfig.Emulate) {
                         if (innerOpenTransaction) {
@@ -461,13 +487,22 @@ public class TableUtils {
                 if (objects.length > 0) {
                     checkOrmTableInstance(objects[0]);
                     TableStruct struct = buildTableStruct(objects[0].getClass());
-                    for (int i = 0; i < objects.length; i++) {
-                        long count = updateInternal(database, struct, objects[i], null, null);
-                        if (count < 1) {
-                            rowIds[i] = insertInternal(database, struct, objects[i], null);
-                        } else {
-                            rowIds[i] = getLastChanges(database);
+                    SQLiteStatement statement = null;
+                    SQLiteStatement statementUpdate = null;
+                    try {
+                        statement = database.compileStatement(struct.insertSql);
+                        statementUpdate = database.compileStatement(struct.updateSql);
+                        for (int i = 0; i < objects.length; i++) {
+                            long count = updateInternal(database, statementUpdate, struct, objects[i]);
+                            if (count < 1) {
+                                rowIds[i] = insertInternal(statement, struct, objects[i]);
+                            } else {
+                                rowIds[i] = getLastChanges(database);
+                            }
                         }
+                    } finally {
+                        safeClose(statement);
+                        safeClose(statementUpdate);
                     }
                     if (innerOpenTransaction) {
                         database.setTransactionSuccessful();
@@ -495,9 +530,12 @@ public class TableUtils {
                 database.beginTransaction();
                 innerOpenTransaction = true;
             }
-            int count = deleteAllInternal(database, getTableName(tClass), context);
+            int count = deleteAllInternal(database, getTableName(tClass));
             if (innerOpenTransaction) {
                 database.setTransactionSuccessful();
+            }
+            if (OrmConfig.Notify && count > 0) {
+                notifyChange(getTableName(tClass), context);
             }
             return count;
         } finally {
@@ -559,7 +597,8 @@ public class TableUtils {
             if (column != null) {
                 FCMap fcmap = new FCMap();
                 fcmap.field = field;
-                fcmap.autoincrement=column.autoincrement();
+                fcmap.dataType = getDataType(field);
+                fcmap.autoincrement = column.autoincrement();
                 fcmap.columnName = getColumnName(field, column);
                 fcmap.translator = OrmConfig.getTranslator(field.getType());
                 fcmap.index = i++;
@@ -582,6 +621,27 @@ public class TableUtils {
         return tableStruct;
     }
 
+    private static FCMap.DataType getDataType(Field field) {
+        Class<?> type = field.getType();
+        if (int.class.isAssignableFrom(type)) {
+            return FCMap.DataType.Long;
+        } else if (long.class.isAssignableFrom(type)) {
+            return FCMap.DataType.Long;
+        } else if (float.class.isAssignableFrom(type)) {
+            return FCMap.DataType.Double;
+        } else if (double.class.isAssignableFrom(type)) {
+            return FCMap.DataType.Double;
+        } else if (byte[].class.isAssignableFrom(type)) {
+            return FCMap.DataType.Blob;
+        } else if (Date.class.isAssignableFrom(type)) {
+            return FCMap.DataType.Long;
+        } else if (boolean.class.isAssignableFrom(type)) {
+            return FCMap.DataType.Long;
+        } else {
+            return FCMap.DataType.String;
+        }
+    }
+
     private static void buildUpdateByPrimaryKeySql(TableStruct tableStruct) {
         StringBuilder whereCondition = new StringBuilder(" WHERE ");
         StringBuilder updateSql = new StringBuilder();
@@ -601,6 +661,37 @@ public class TableUtils {
         updateSql.replace(updateSql.length() - 1, updateSql.length(), " ");
         updateSql.append(whereCondition);
         tableStruct.updateSql = updateSql.toString();
+    }
+
+    private static void bindArg(int index, SQLiteStatement statement, FCMap.DataType dataType, Object value) {
+        if (value == null) {
+            statement.bindNull(index);
+        } else {
+            switch (dataType) {
+                case Long:
+                    statement.bindLong(index, (long) value);
+                    break;
+                case Blob:
+                    statement.bindBlob(index, (byte[]) value);
+                    break;
+                case Double:
+                    statement.bindDouble(index, (double) value);
+                    break;
+                default:
+                    statement.bindString(index, String.valueOf(value));
+                    break;
+            }
+        }
+    }
+
+    private static void safeClose(Closeable closeable) {
+        if (closeable != null) {
+            try {
+                closeable.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     private static void notifyChange(final String s, final Context context) {

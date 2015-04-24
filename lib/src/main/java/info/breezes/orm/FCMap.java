@@ -22,6 +22,12 @@ import info.breezes.orm.translator.IColumnTranslator;
 import java.lang.reflect.Field;
 
 public class FCMap {
+    public enum DataType{
+        String,
+        Long,
+        Double,
+        Blob
+    }
     public Field field;
     public int index;
     public String columnName;
@@ -29,4 +35,5 @@ public class FCMap {
     public IColumnTranslator translator;
     public boolean blob;
     public boolean autoincrement;
+    public DataType dataType=DataType.String;
 }
