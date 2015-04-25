@@ -622,27 +622,6 @@ public class TableUtils {
         return tableStruct;
     }
 
-    private static FCMap.DataType getDataType(Field field) {
-        Class<?> type = field.getType();
-        if (int.class.isAssignableFrom(type)) {
-            return FCMap.DataType.Long;
-        } else if (long.class.isAssignableFrom(type)) {
-            return FCMap.DataType.Long;
-        } else if (float.class.isAssignableFrom(type)) {
-            return FCMap.DataType.Double;
-        } else if (double.class.isAssignableFrom(type)) {
-            return FCMap.DataType.Double;
-        } else if (byte[].class.isAssignableFrom(type)) {
-            return FCMap.DataType.Blob;
-        } else if (Date.class.isAssignableFrom(type)) {
-            return FCMap.DataType.Long;
-        } else if (boolean.class.isAssignableFrom(type)) {
-            return FCMap.DataType.Long;
-        } else {
-            return FCMap.DataType.String;
-        }
-    }
-
     private static void buildUpdateByPrimaryKeySql(TableStruct tableStruct) {
         StringBuilder whereCondition = new StringBuilder(" WHERE ");
         StringBuilder updateSql = new StringBuilder();
@@ -664,19 +643,52 @@ public class TableUtils {
         tableStruct.updateSql = updateSql.toString();
     }
 
+    private static FCMap.DataType getDataType(Field field) {
+        Class<?> type = field.getType();
+        if (int.class.isAssignableFrom(type)) {
+            return FCMap.DataType.Int;
+        } else if (long.class.isAssignableFrom(type)) {
+            return FCMap.DataType.Long;
+        } else if (float.class.isAssignableFrom(type)) {
+            return FCMap.DataType.Float;
+        } else if (double.class.isAssignableFrom(type)) {
+            return FCMap.DataType.Double;
+        } else if (byte[].class.isAssignableFrom(type)) {
+            return FCMap.DataType.Blob;
+        } else if (Date.class.isAssignableFrom(type)) {
+            return FCMap.DataType.Date;
+        } else if (boolean.class.isAssignableFrom(type)) {
+            return FCMap.DataType.Boolean;
+        } else {
+            return FCMap.DataType.String;
+        }
+    }
+
     private static void bindArg(int index, SQLiteStatement statement, FCMap.DataType dataType, Object value) {
         if (value == null) {
             statement.bindNull(index);
         } else {
             switch (dataType) {
+                case Int:
+                    statement.bindLong(index, (int) value);
+                    break;
                 case Long:
                     statement.bindLong(index, (long) value);
                     break;
-                case Blob:
-                    statement.bindBlob(index, (byte[]) value);
+                case Float:
+                    statement.bindDouble(index, (float) value);
                     break;
                 case Double:
                     statement.bindDouble(index, (double) value);
+                    break;
+                case Date:
+                    statement.bindLong(index, ((Date) value).getTime());
+                    break;
+                case Boolean:
+                    statement.bindLong(index, ((boolean) value) ? 1 : 0);
+                    break;
+                case Blob:
+                    statement.bindBlob(index, (byte[]) value);
                     break;
                 default:
                     statement.bindString(index, String.valueOf(value));

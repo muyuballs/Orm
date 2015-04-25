@@ -24,9 +24,11 @@ import java.lang.reflect.Field;
 public class FCMap {
     public enum DataType{
         String,
+        Int,
         Long,
+        Float,
         Double,
-        Blob
+        Date, Boolean, Blob
     }
     public Field field;
     public int index;
