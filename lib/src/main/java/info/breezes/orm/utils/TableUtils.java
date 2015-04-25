@@ -18,6 +18,7 @@ package info.breezes.orm.utils;
 
 import android.content.Context;
 import android.database.Cursor;
+import android.database.sqlite.SQLiteClosable;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteStatement;
 import android.net.Uri;
@@ -684,10 +685,10 @@ public class TableUtils {
         }
     }
 
-    private static void safeClose(Closeable closeable) {
-        if (closeable != null) {
+    private static void safeClose(SQLiteClosable closable) {
+        if (closable != null) {
             try {
-                closeable.close();
+                closable.releaseReference();
             } catch (Exception e) {
                 e.printStackTrace();
             }
