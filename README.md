@@ -1,4 +1,4 @@
-Orm [![Build Status](https://travis-ci.org/xbreezes/Orm.svg?branch=master)](https://travis-ci.org/xbreezes/Orm)   [ ![Download](https://api.bintray.com/packages/xbreezes/maven/Orm/images/download.svg) ](https://bintray.com/xbreezes/maven/Orm/_latestVersion)  [![Coverage Status](https://coveralls.io/repos/xbreezes/Orm/badge.svg)](https://coveralls.io/r/xbreezes/Orm)
+Orm [![Build Status](https://travis-ci.org/xbreezes/Orm.svg?branch=master)](https://travis-ci.org/xbreezes/Orm)    [ ![Download](https://api.bintray.com/packages/xbreezes/maven/droid-orm/images/download.svg) ](https://bintray.com/xbreezes/maven/droid-orm/_latestVersion)  [![Coverage Status](https://coveralls.io/repos/xbreezes/Orm/badge.svg)](https://coveralls.io/r/xbreezes/Orm)
 -----
 
 零配置android简单数据库操作框架

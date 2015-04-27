@@ -14,4 +14,4 @@
  * limitations under the LICENSE
  */
 
-include ':lib'
+include ':droid-orm'
