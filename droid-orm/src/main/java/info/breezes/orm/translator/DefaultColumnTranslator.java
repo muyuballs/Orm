@@ -56,13 +56,6 @@ public class DefaultColumnTranslator implements IColumnTranslator {
     @Override
     public Object getColumnValue(Field field, Object obj) {
         try {
-            if (Date.class.isAssignableFrom(field.getType())) {
-                Date date = (Date) field.get(obj);
-                if (date == null) {
-                    return 0;
-                }
-                return date.getTime();
-            }
             if (boolean.class.isAssignableFrom(field.getType())) {
                 boolean bool = (Boolean) field.get(obj);
                 return bool ? 1 : 0;

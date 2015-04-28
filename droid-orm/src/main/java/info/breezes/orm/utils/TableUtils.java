@@ -351,6 +351,9 @@ public class TableUtils {
                 if (result < 1) {
                     result = insertInternal(statement, struct, entity);
                 }
+                if(innerOpenTransaction){
+                    database.setTransactionSuccessful();
+                }
                 if (OrmConfig.Notify && result != 0) {
                     notifyChange(struct.table, context);
                 }
@@ -501,12 +504,12 @@ public class TableUtils {
                                 rowIds[i] = getLastChanges(database);
                             }
                         }
+                        if (innerOpenTransaction) {
+                            database.setTransactionSuccessful();
+                        }
                     } finally {
                         safeClose(statement);
                         safeClose(statementUpdate);
-                    }
-                    if (innerOpenTransaction) {
-                        database.setTransactionSuccessful();
                     }
                     String tableName = getTableName(objects[0].getClass());
                     notifyChange(tableName, context);

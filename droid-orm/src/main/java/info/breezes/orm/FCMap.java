@@ -28,7 +28,9 @@ public class FCMap {
         Long,
         Float,
         Double,
-        Date, Boolean, Blob
+        Date,
+        Boolean,
+        Blob
     }
     public Field field;
     public int index;
