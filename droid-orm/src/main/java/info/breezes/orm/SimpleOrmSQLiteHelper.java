@@ -22,6 +22,7 @@ import android.database.DatabaseErrorHandler;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Build;
 import android.util.Log;
+
 import info.breezes.orm.utils.TableUtils;
 
 public class SimpleOrmSQLiteHelper extends OrmSQLiteHelper {
@@ -35,7 +36,7 @@ public class SimpleOrmSQLiteHelper extends OrmSQLiteHelper {
         this.tables = tables;
     }
 
-    public SimpleOrmSQLiteHelper(Context context, String name, SQLiteDatabase.CursorFactory factory, int version,Class<?>... tables) {
+    public SimpleOrmSQLiteHelper(Context context, String name, SQLiteDatabase.CursorFactory factory, int version, Class<?>... tables) {
         super(context, name, factory, version);
         this.tables = tables;
     }
@@ -47,9 +48,9 @@ public class SimpleOrmSQLiteHelper extends OrmSQLiteHelper {
 
     @Override
     public void onCreate(SQLiteDatabase db) {
-        if(tables!=null && tables.length>0) {
-            for (Class<?> table: tables) {
-                if(table!=null) {
+        if (tables != null && tables.length > 0) {
+            for (Class<?> table : tables) {
+                if (table != null) {
                     TableUtils.createTable(db, table);
                 }
             }
@@ -58,7 +59,12 @@ public class SimpleOrmSQLiteHelper extends OrmSQLiteHelper {
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-
+        Log.d(TAG, "upgrade:" + oldVersion + "->" + newVersion);
+        for (Class<?> table : tables) {
+            if (table != null) {
+                TableUtils.upgradeTable(db, table);
+            }
+        }
     }
 
     @Override

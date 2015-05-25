@@ -22,6 +22,7 @@ import android.test.AndroidTestCase;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.Log;
 
+import junit.framework.Assert;
 import junit.framework.TestResult;
 
 import java.io.File;
@@ -34,8 +35,12 @@ public class OrmTest extends AndroidTestCase {
 
     String TAG = "orm.test";
 
-    TestOrmSQLiteHelper helper;
+    SimpleOrmSQLiteHelper helper;
     boolean over;
+
+    static {
+        OrmConfig.Debug = true;
+    }
 
     @Override
     public void run(TestResult result) {
@@ -49,7 +54,7 @@ public class OrmTest extends AndroidTestCase {
         super.setUp();
         Log.d(TAG, "setUp");
         OrmConfig.Debug = false;
-        helper = new TestOrmSQLiteHelper(getContext(), "test.db", 1);
+        helper = new SimpleOrmSQLiteHelper(getContext(), "test.db", 1, Employee.class);
     }
 
     @SmallTest
@@ -100,6 +105,34 @@ public class OrmTest extends AndroidTestCase {
         over = true;
     }
 
+    @SmallTest
+    public void testGUpgrade() throws Exception {
+        SimpleOrmSQLiteHelper helper = new SimpleOrmSQLiteHelper(getContext(), "test2.db", 1, Employee.class);
+        Log.d(TAG, helper.getCurrentDatabase(true).getVersion() + "-->1");
+        Assert.assertEquals(1, helper.getCurrentDatabase(false).getVersion());
+        ArrayList<Employee> employees = new ArrayList<>();
+        for (int i = 0; i < 500; i++) {
+            Employee employee = new Employee();
+            employees.add(employee);
+        }
+        helper.insertAll(employees.toArray());
+        helper.close();
+        helper = new SimpleOrmSQLiteHelper(getContext(), "test2.db", 2, Employee2.class);
+        Log.d(TAG, helper.getCurrentDatabase(true).getVersion() + "-->2");
+        Assert.assertEquals(2, helper.getCurrentDatabase(false).getVersion());
+        int count = helper.query(Employee2.class).execute().size();
+        Log.d(TAG, "c:" + count);
+        Assert.assertEquals(500, count);
+        helper.close();
+        File file = new File(helper.getCurrentDatabase(false).getPath());
+        helper.getCurrentDatabase(false).close();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+            SQLiteDatabase.deleteDatabase(file);
+        } else {
+            file.delete();
+        }
+    }
+
     //@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
     @Override
     protected void tearDown() throws Exception {
@@ -109,9 +142,9 @@ public class OrmTest extends AndroidTestCase {
             Log.d(TAG, "Clean.");
             File file = new File(helper.getCurrentDatabase(false).getPath());
             helper.getCurrentDatabase(false).close();
-            if(Build.VERSION.SDK_INT>= Build.VERSION_CODES.JELLY_BEAN) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
                 SQLiteDatabase.deleteDatabase(file);
-            }else{
+            } else {
                 file.delete();
             }
         }

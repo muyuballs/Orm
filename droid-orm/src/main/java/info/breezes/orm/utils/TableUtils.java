@@ -46,14 +46,49 @@ public class TableUtils {
         Field field;
     }
 
-    public static boolean createTable(SQLiteDatabase database, Class<?> tableClass) {
+    public static void upgradeTable(SQLiteDatabase db, Class<?> tableClass) {
+        if (OrmConfig.Emulate) {
+            return;
+        }
+        Table table = tableClass.getAnnotation(Table.class);
+        if (table != null) {
+            String tableName = getTableName(tableClass);
+            Cursor cursor = db.rawQuery("pragma table_info(" + tableName + ")", null);
+            ArrayList<String> oldColumns = new ArrayList<>();
+            int nameIndex = cursor.getColumnIndex("name");
+            while (cursor.moveToNext()) {
+                oldColumns.add(cursor.getString(nameIndex));
+            }
+            String tmpTableName = "_tmp_" + tableName + System.nanoTime();
+            if (createTable(db, tableClass, tmpTableName)) {
+                String updateSql = "insert into " + tmpTableName + "(" + TextUtils.join(",", oldColumns) + ")" + " select * from " + tableName;
+                if (OrmConfig.Debug) {
+                    Log.d("ORM insert into tmp", updateSql);
+                }
+                db.execSQL(updateSql);
+                db.execSQL("drop table " + tableName);
+                if (OrmConfig.Debug) {
+                    Log.d("ORM delete old", "drop table " + tableName);
+                }
+                String renameSql = "alter table " + tmpTableName + " rename to " + tableName;
+                if (OrmConfig.Debug) {
+                    Log.d("ORM rename", renameSql);
+                }
+                db.execSQL(renameSql);
+            }
+        } else {
+            throw new RuntimeException(tableClass.getName() + " is not an orm table.");
+        }
+    }
+
+    public static boolean createTable(SQLiteDatabase database, Class<?> tableClass, String tableName) {
         Table table = tableClass.getAnnotation(Table.class);
         if (table != null) {
             ArrayList<String> indexes = new ArrayList<>();
             StringBuilder indexSql = new StringBuilder();
             StringBuilder createSql = new StringBuilder();
             createSql.append("CREATE TABLE IF NOT EXISTS ");
-            createSql.append(getTableName(tableClass, table));
+            createSql.append(TextUtils.isEmpty(tableName) ? getTableName(tableClass, table) : tableName);
             createSql.append("(");
             ArrayList<Col> cols = new ArrayList<>();
             Field fields[] = tableClass.getFields();
@@ -134,6 +169,10 @@ public class TableUtils {
         } else {
             throw new RuntimeException(tableClass.getName() + " is not an orm table.");
         }
+    }
+
+    public static boolean createTable(SQLiteDatabase database, Class<?> tableClass) {
+        return createTable(database, tableClass, null);
     }
 
     private static <T> long insertInternal(SQLiteStatement statement, TableStruct struct, T entity) {
@@ -351,7 +390,7 @@ public class TableUtils {
                 if (result < 1) {
                     result = insertInternal(statement, struct, entity);
                 }
-                if(innerOpenTransaction){
+                if (innerOpenTransaction) {
                     database.setTransactionSuccessful();
                 }
                 if (OrmConfig.Notify && result != 0) {
