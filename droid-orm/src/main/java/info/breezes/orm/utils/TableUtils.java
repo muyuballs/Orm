@@ -25,7 +25,6 @@ import android.net.Uri;
 import android.text.TextUtils;
 import android.util.Log;
 
-import java.io.Closeable;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -59,6 +58,7 @@ public class TableUtils {
             while (cursor.moveToNext()) {
                 oldColumns.add(cursor.getString(nameIndex));
             }
+            cursor.close();
             String tmpTableName = "_tmp_" + tableName + System.nanoTime();
             if (createTable(db, tableClass, tmpTableName)) {
                 String updateSql = "insert into " + tmpTableName + "(" + TextUtils.join(",", oldColumns) + ")" + " select * from " + tableName;
