@@ -56,10 +56,6 @@ public class DefaultColumnTranslator implements IColumnTranslator {
     @Override
     public Object getColumnValue(Field field, Object obj) {
         try {
-            if (boolean.class.isAssignableFrom(field.getType())) {
-                boolean bool = (Boolean) field.get(obj);
-                return bool ? 1 : 0;
-            }
             return field.get(obj);
         } catch (IllegalAccessException exp) {
             throw new RuntimeException(exp);
