@@ -119,7 +119,24 @@ Orm [![Build Status](https://travis-ci.org/xbreezes/Orm.svg?branch=master)](http
  OrmConfig.Notify=false;
  ```
 
+ * 升级
+
+ ```java
+ //1.创建SimpleOrmSQLiteHelper时将version增加,
+ SimpleOrmSQLiteHelper helper=new SimpleOrmSQLiteHelper(context,"demo.db",2,Demo.class);
+ //2.然后在Entity中增加所需要增加的字段
+ ```
+
+ >升级只支持增加字段,不支持删除字段
+
+ >增加的字段必须有默认值
+
+
 #### 版本更新
+
+  * 2015-05-25
+
+    >增加数据库升级功能
 
   * 2015-04-23
 
