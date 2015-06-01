@@ -150,8 +150,11 @@ public class QueryAble<T> implements Iterable<T>, Iterator<T>, Closeable {
     }
 
     public void close() {
-        cursor.close();
-        cursor = null;
+        database.close();
+        if (cursor != null) {
+            cursor.close();
+            cursor = null;
+        }
     }
 
     public int size() {
@@ -247,4 +250,9 @@ public class QueryAble<T> implements Iterable<T>, Iterator<T>, Closeable {
         throw new RuntimeException("QueryAble is Readonly.");
     }
 
+    @Override
+    protected void finalize() throws Throwable {
+        close();
+        super.finalize();
+    }
 }
