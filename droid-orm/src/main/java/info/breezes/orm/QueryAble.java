@@ -22,19 +22,17 @@ import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
 import android.util.Log;
 
+import java.io.Closeable;
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Iterator;
+
 import info.breezes.orm.annotation.Column;
 import info.breezes.orm.expressions.Limit;
 import info.breezes.orm.expressions.OrderBy;
 import info.breezes.orm.expressions.Where;
-import info.breezes.orm.translator.IColumnTranslator;
 import info.breezes.orm.utils.CursorUtils;
 import info.breezes.orm.utils.TableUtils;
-
-import java.io.Closeable;
-import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
 
 public class QueryAble<T> implements Iterable<T>, Iterator<T>, Closeable {
     private Class<T> table;
@@ -54,10 +52,10 @@ public class QueryAble<T> implements Iterable<T>, Iterator<T>, Closeable {
         this.table = table;
         this.database = database;
         this.mContext = context;
-        wheres = new ArrayList<Where>();
-        orderBys = new ArrayList<OrderBy>();
-        params = new ArrayList<String>();
-        fcMaps = new ArrayList<FCMap>();
+        wheres = new ArrayList<>();
+        orderBys = new ArrayList<>();
+        params = new ArrayList<>();
+        fcMaps = new ArrayList<>();
     }
 
     public QueryAble<T> where(String column, Object value, String operation) {
@@ -137,7 +135,7 @@ public class QueryAble<T> implements Iterable<T>, Iterator<T>, Closeable {
     }
 
     public ArrayList<T> toList() {
-        ArrayList<T> arrayList = new ArrayList<T>();
+        ArrayList<T> arrayList = new ArrayList<>();
         for (T t : this) {
             arrayList.add(t);
         }
@@ -180,7 +178,9 @@ public class QueryAble<T> implements Iterable<T>, Iterator<T>, Closeable {
             Where where = wheres.get(0);
             stringBuilder.append(" WHERE ");
             stringBuilder.append(where.column);
+            stringBuilder.append(" ");
             stringBuilder.append(where.operation);
+            stringBuilder.append(" ");
             stringBuilder.append("?");
             params.add(where.value.toString());
             for (int i = 1; i < wheres.size(); i++) {
@@ -189,7 +189,9 @@ public class QueryAble<T> implements Iterable<T>, Iterator<T>, Closeable {
                 stringBuilder.append(where.condition);
                 stringBuilder.append(" ");
                 stringBuilder.append(where.column);
+                stringBuilder.append(" ");
                 stringBuilder.append(where.operation);
+                stringBuilder.append(" ");
                 stringBuilder.append("?");
                 params.add(where.value.toString());
             }
