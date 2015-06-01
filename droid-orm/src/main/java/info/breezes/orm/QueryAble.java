@@ -21,6 +21,7 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
 import android.util.Log;
+
 import info.breezes.orm.annotation.Column;
 import info.breezes.orm.expressions.Limit;
 import info.breezes.orm.expressions.OrderBy;
@@ -29,12 +30,13 @@ import info.breezes.orm.translator.IColumnTranslator;
 import info.breezes.orm.utils.CursorUtils;
 import info.breezes.orm.utils.TableUtils;
 
+import java.io.Closeable;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 
-public class QueryAble<T> implements Iterable<T>, Iterator<T> {
+public class QueryAble<T> implements Iterable<T>, Iterator<T>, Closeable {
     private Class<T> table;
     private SQLiteDatabase database;
     private ArrayList<Where> wheres;
