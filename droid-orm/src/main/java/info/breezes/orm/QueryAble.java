@@ -160,7 +160,6 @@ public class QueryAble<T> implements Iterable<T>, Iterator<T>, Closeable {
     }
 
     public void close() {
-        database.close();
         if (cursor != null) {
             cursor.close();
             cursor = null;
