@@ -58,6 +58,16 @@ public class QueryAble<T> implements Iterable<T>, Iterator<T>, Closeable {
         fcMaps = new ArrayList<>();
     }
 
+    public QueryAble<T> beginSub() {
+        this.wheres.add(Where.SUB_BEGIN);
+        return this;
+    }
+
+    public QueryAble<T> endSub() {
+        this.wheres.add(Where.SUB_END);
+        return this;
+    }
+
     public QueryAble<T> where(String column, Object value, String operation) {
         Where where = new Where(column, value, operation);
         if (!this.wheres.contains(where)) {
@@ -180,23 +190,35 @@ public class QueryAble<T> implements Iterable<T>, Iterator<T>, Closeable {
         if (wheres.size() > 0) {
             Where where = wheres.get(0);
             stringBuilder.append(" WHERE ");
-            stringBuilder.append(where.column);
-            stringBuilder.append(" ");
-            stringBuilder.append(where.operation);
-            stringBuilder.append(" ");
-            stringBuilder.append("?");
-            params.add(where.value.toString());
-            for (int i = 1; i < wheres.size(); i++) {
-                where = wheres.get(i);
-                stringBuilder.append(" ");
-                stringBuilder.append(where.condition);
-                stringBuilder.append(" ");
+            if (where == Where.SUB_BEGIN) {
+                stringBuilder.append(" ( ");
+            } else if (where == Where.SUB_END) {
+                stringBuilder.append(" ) ");
+            } else {
                 stringBuilder.append(where.column);
                 stringBuilder.append(" ");
                 stringBuilder.append(where.operation);
                 stringBuilder.append(" ");
                 stringBuilder.append("?");
-                params.add(where.value.toString());
+            }
+            params.add(where.value.toString());
+            for (int i = 1; i < wheres.size(); i++) {
+                where = wheres.get(i);
+                if (where == Where.SUB_BEGIN) {
+                    stringBuilder.append(" ( ");
+                } else if (where == Where.SUB_END) {
+                    stringBuilder.append(" ) ");
+                } else {
+                    stringBuilder.append(" ");
+                    stringBuilder.append(where.condition);
+                    stringBuilder.append(" ");
+                    stringBuilder.append(where.column);
+                    stringBuilder.append(" ");
+                    stringBuilder.append(where.operation);
+                    stringBuilder.append(" ");
+                    stringBuilder.append("?");
+                    params.add(where.value.toString());
+                }
             }
         }
 

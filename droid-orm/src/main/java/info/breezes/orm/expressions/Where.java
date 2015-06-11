@@ -17,6 +17,8 @@
 package info.breezes.orm.expressions;
 
 public class Where {
+    public static final Where SUB_BEGIN = new Where(null, null, "_sub_begin_");
+    public static final Where SUB_END = new Where(null, null, "_sub_end_");
     public String condition;
     public String column;
     public Object value;
