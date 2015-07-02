@@ -69,7 +69,7 @@ public class SimpleOrmSQLiteHelper extends OrmSQLiteHelper {
 
     @Override
     public SQLiteDatabase getCurrentDatabase(boolean writable) {
-        if (database == null) {
+        if (database == null || !database.isOpen()) {
             database = writable ? getWritableDatabase() : getReadableDatabase();
         } else if (database.isReadOnly() && writable) {
             database.close();
