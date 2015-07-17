@@ -23,6 +23,7 @@ import android.database.sqlite.SQLiteDatabase;
 import android.os.Build;
 import android.util.Log;
 
+import info.breezes.orm.model.Db;
 import info.breezes.orm.utils.TableUtils;
 
 public class SimpleOrmSQLiteHelper extends OrmSQLiteHelper {
@@ -48,6 +49,7 @@ public class SimpleOrmSQLiteHelper extends OrmSQLiteHelper {
 
     @Override
     public void onCreate(SQLiteDatabase db) {
+        TableUtils.createTable(db, Db.class);
         if (tables != null && tables.length > 0) {
             for (Class<?> table : tables) {
                 if (table != null) {
@@ -56,6 +58,19 @@ public class SimpleOrmSQLiteHelper extends OrmSQLiteHelper {
             }
         }
     }
+
+    @Override
+    public void onOpen(SQLiteDatabase db) {
+        super.onOpen(db);
+        if (tables != null && tables.length > 0) {
+            for (Class<?> table : tables) {
+                if (table != null) {
+                    TableUtils.upgradeTable(db, table);
+                }
+            }
+        }
+    }
+
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {

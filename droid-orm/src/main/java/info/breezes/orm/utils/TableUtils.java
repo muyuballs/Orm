@@ -52,29 +52,57 @@ public class TableUtils {
         Table table = tableClass.getAnnotation(Table.class);
         if (table != null) {
             String tableName = getTableName(tableClass);
-            Cursor cursor = db.rawQuery("pragma table_info(" + tableName + ")", null);
-            ArrayList<String> oldColumns = new ArrayList<>();
-            int nameIndex = cursor.getColumnIndex("name");
-            while (cursor.moveToNext()) {
-                oldColumns.add(cursor.getString(nameIndex));
+            int oldVersion = 0;
+            try {
+                Cursor cursor1 = db.rawQuery("select version from orm.db where table=?", new String[]{tableName});
+                if (cursor1.moveToNext()) {
+                    oldVersion = cursor1.getInt(0);
+                }
+                cursor1.close();
+            } catch (Exception exp) {
+                if (OrmConfig.Debug) {
+                    Log.w("ORM", exp.getMessage(), exp);
+                }
             }
-            cursor.close();
+            if (oldVersion == table.version()) {
+                if (OrmConfig.Debug) {
+                    Log.d("ORM", "not need upgrade or downgrade");
+                }
+                return;
+            }
+            ArrayList<String> oldColumns = new ArrayList<>();
+            try {
+                Cursor cursor = db.rawQuery("pragma table_info(" + tableName + ")", null);
+
+                int nameIndex = cursor.getColumnIndex("name");
+                while (cursor.moveToNext()) {
+                    oldColumns.add(cursor.getString(nameIndex));
+                }
+                cursor.close();
+            } catch (Exception exp) {
+                if (OrmConfig.Debug) {
+                    Log.w("ORM", exp.getMessage(), exp);
+                }
+            }
             String tmpTableName = "_tmp_" + tableName + System.nanoTime();
             if (createTable(db, tableClass, tmpTableName)) {
-                String updateSql = "insert into " + tmpTableName + "(" + TextUtils.join(",", oldColumns) + ")" + " select * from " + tableName;
-                if (OrmConfig.Debug) {
-                    Log.d("ORM insert into tmp", updateSql);
-                }
-                db.execSQL(updateSql);
-                db.execSQL("drop table " + tableName);
-                if (OrmConfig.Debug) {
-                    Log.d("ORM delete old", "drop table " + tableName);
+                if (oldColumns.size() > 0) {
+                    String updateSql = "insert into " + tmpTableName + "(" + TextUtils.join(",", oldColumns) + ")" + " select * from " + tableName;
+                    if (OrmConfig.Debug) {
+                        Log.d("ORM insert into tmp", updateSql);
+                    }
+                    db.execSQL(updateSql);
+                    db.execSQL("drop table " + tableName);
+                    if (OrmConfig.Debug) {
+                        Log.d("ORM delete old", "drop table " + tableName);
+                    }
                 }
                 String renameSql = "alter table " + tmpTableName + " rename to " + tableName;
                 if (OrmConfig.Debug) {
                     Log.d("ORM rename", renameSql);
                 }
                 db.execSQL(renameSql);
+                db.execSQL("update orm.db set version=? where table=?", new Object[]{table.version(), tableName});
             }
         } else {
             throw new RuntimeException(tableClass.getName() + " is not an orm table.");
@@ -165,6 +193,7 @@ public class TableUtils {
                     database.execSQL(str);
                 }
             }
+            database.execSQL("insert into orm.db values(?,?)", new Object[]{table.version(), tableName});
             return true;
         } else {
             throw new RuntimeException(tableClass.getName() + " is not an orm table.");

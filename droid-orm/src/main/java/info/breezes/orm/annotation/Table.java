@@ -26,4 +26,5 @@ import java.lang.annotation.Target;
 public @interface Table {
     String name() default "";
     String comment() default "";
+    int version() default 0;
 }
