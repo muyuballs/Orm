@@ -35,6 +35,7 @@ import info.breezes.orm.FCMap;
 import info.breezes.orm.OrmConfig;
 import info.breezes.orm.annotation.Column;
 import info.breezes.orm.annotation.Table;
+import info.breezes.orm.model.Db;
 import info.breezes.orm.translator.IColumnTranslator;
 
 public class TableUtils {
@@ -54,7 +55,7 @@ public class TableUtils {
             String tableName = getTableName(tableClass);
             int oldVersion = 0;
             try {
-                Cursor cursor1 = db.rawQuery("select version from orm.db where table=?", new String[]{tableName});
+                Cursor cursor1 = db.rawQuery("select version from __orm_db_version__ where table_name=?", new String[]{tableName});
                 if (cursor1.moveToNext()) {
                     oldVersion = cursor1.getInt(0);
                 }
@@ -102,7 +103,16 @@ public class TableUtils {
                     Log.d("ORM rename", renameSql);
                 }
                 db.execSQL(renameSql);
-                db.execSQL("update orm.db set version=? where table=?", new Object[]{table.version(), tableName});
+                try {
+                    Db db1 = new Db();
+                    db1.version = table.version();
+                    db1.tableName = tableName;
+                    insertOrUpdate(db, db1, null);
+                }catch (Exception exp) {
+                    if (OrmConfig.Debug) {
+                        Log.w("ORM", exp.getMessage(), exp);
+                    }
+                }
             }
         } else {
             throw new RuntimeException(tableClass.getName() + " is not an orm table.");
@@ -193,7 +203,16 @@ public class TableUtils {
                     database.execSQL(str);
                 }
             }
-            database.execSQL("insert into orm.db values(?,?)", new Object[]{table.version(), tableName});
+            try {
+                Db db1 = new Db();
+                db1.version = table.version();
+                db1.tableName = tableName;
+                insertOrUpdate(database, db1, null);
+            }catch (Exception exp) {
+                if (OrmConfig.Debug) {
+                    Log.w("ORM", exp.getMessage(), exp);
+                }
+            }
             return true;
         } else {
             throw new RuntimeException(tableClass.getName() + " is not an orm table.");

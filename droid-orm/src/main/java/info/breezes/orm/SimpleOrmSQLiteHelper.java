@@ -62,6 +62,7 @@ public class SimpleOrmSQLiteHelper extends OrmSQLiteHelper {
     @Override
     public void onOpen(SQLiteDatabase db) {
         super.onOpen(db);
+        TableUtils.createTable(db, Db.class);
         if (tables != null && tables.length > 0) {
             for (Class<?> table : tables) {
                 if (table != null) {
