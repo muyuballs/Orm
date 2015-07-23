@@ -108,7 +108,7 @@ public class TableUtils {
                     db1.version = table.version();
                     db1.tableName = tableName;
                     insertOrUpdate(db, db1, null);
-                }catch (Exception exp) {
+                } catch (Exception exp) {
                     if (OrmConfig.Debug) {
                         Log.w("ORM", exp.getMessage(), exp);
                     }
@@ -208,7 +208,7 @@ public class TableUtils {
                 db1.version = table.version();
                 db1.tableName = tableName;
                 insertOrUpdate(database, db1, null);
-            }catch (Exception exp) {
+            } catch (Exception exp) {
                 if (OrmConfig.Debug) {
                     Log.w("ORM", exp.getMessage(), exp);
                 }
@@ -331,12 +331,12 @@ public class TableUtils {
             if (column != null) {
                 IColumnTranslator translator = OrmConfig.getTranslator(field.getType());
                 String columnName = getColumnName(field, column);
-                if (baseColumn != null && baseColumn.equals(columnName)) {
+                if (!TextUtils.isEmpty(baseColumn) && baseColumn.equals(columnName)) {
                     whereCondition.append(getColumnName(field, column));
                     whereCondition.append("=?");
                     pkValue = translator.getColumnValue(field, object);
                     break;// 单字段主键,找到后立即结束查找
-                } else if (column.primaryKey()) {
+                } else if (TextUtils.isEmpty(baseColumn) && column.primaryKey()) {
                     whereCondition.append(getColumnName(field, column));
                     whereCondition.append("=?");
                     pkValue = translator.getColumnValue(field, object);
