@@ -25,6 +25,7 @@ import info.breezes.orm.annotation.Column;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -34,11 +35,13 @@ public class CursorUtils {
         long st = System.currentTimeMillis();
         try {
             T entity = type.newInstance();
-            int index = 0;
             for (FCMap fcMap : tableStruct.fcmaps) {
-                Object value = fcMap.translator.readColumnValue(cursor, index++, fcMap.field);
-                if (value != null) {
-                    fcMap.field.set(entity, value);
+                int index = cursor.getColumnIndex(fcMap.columnName);
+                if (index > -1) {
+                    Object value = fcMap.translator.readColumnValue(cursor, index, fcMap.field);
+                    if (value != null) {
+                        fcMap.field.set(entity, value);
+                    }
                 }
             }
             if (OrmConfig.Debug) {
@@ -56,7 +59,7 @@ public class CursorUtils {
         long st = System.currentTimeMillis();
         try {
             T entity = type.newInstance();
-            Field fields[] = type.getFields();
+            Field fields[] = type.getDeclaredFields();
             for (Field field : fields) {
                 Column column = field.getAnnotation(Column.class);
                 if (column != null) {
@@ -91,15 +94,18 @@ public class CursorUtils {
         long st = System.currentTimeMillis();
         try {
             T entity = type.newInstance();
-            Field fields[] = type.getFields();
+            Field fields[] = type.getDeclaredFields();
             for (Field field : fields) {
                 Column column = field.getAnnotation(Column.class);
                 if (column != null) {
                     String columnName = TableUtils.getColumnName(field);
                     Class<?> fieldType = field.getType();
-                    Object value = OrmConfig.getTranslator(fieldType).readColumnValue(cursor, cursor.getColumnIndex(columnName), field);
-                    if (value != null) {
-                        field.set(entity, value);
+                    int index = cursor.getColumnIndex(columnName);
+                    if (index > -1) {
+                        Object value = OrmConfig.getTranslator(fieldType).readColumnValue(cursor, index, field);
+                        if (value != null) {
+                            field.set(entity, value);
+                        }
                     }
                 }
             }
