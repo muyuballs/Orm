@@ -28,7 +28,7 @@ public final class OrmConfig {
     public static boolean Debug = false;
     public static boolean Emulate = false;
     public static boolean Response = true;
-    public static boolean Notify = true;
+    public static boolean Notify = false;
 
     public static void register(Class<?> type, IColumnTranslator translator) {
         columnTranslatorHashMap.put(type, translator);

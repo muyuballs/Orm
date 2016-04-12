@@ -36,7 +36,6 @@ public class OrmTest extends AndroidTestCase {
     String TAG = "orm.test";
 
     SimpleOrmSQLiteHelper helper;
-    boolean over;
 
     static {
         OrmConfig.Debug = true;
@@ -51,9 +50,6 @@ public class OrmTest extends AndroidTestCase {
 
     @Override
     public void setUp() throws Exception {
-        super.setUp();
-        Log.d(TAG, "setUp");
-        OrmConfig.Debug = false;
         helper = new SimpleOrmSQLiteHelper(getContext(), "test.db", 1, Employee.class);
     }
 
@@ -73,7 +69,7 @@ public class OrmTest extends AndroidTestCase {
 
     @SmallTest
     public void testCInsertAll500() throws Exception {
-        ArrayList<Employee> employees = new ArrayList<Employee>();
+        ArrayList<Employee> employees = new ArrayList<>();
         for (int i = 0; i < 500; i++) {
             Employee employee = new Employee();
             employees.add(employee);
@@ -82,31 +78,43 @@ public class OrmTest extends AndroidTestCase {
     }
 
     @SmallTest
+    public void testC1InsertCollection500() throws Exception {
+        ArrayList<Employee> employees = new ArrayList<Employee>();
+        for (int i = 0; i < 500; i++) {
+            Employee employee = new Employee();
+            employees.add(employee);
+        }
+        helper.insertAll(employees);
+    }
+
+    @SmallTest
     public void testDCount() throws Exception {
+        ArrayList<Employee> employees = new ArrayList<>();
+        for (int i = 0; i < 500; i++) {
+            Employee employee = new Employee();
+            employees.add(employee);
+        }
+        helper.insertAll(employees.toArray());
         int count = helper.query(Employee.class).execute().size();
-        Log.d(TAG, "Count:" + count);
+        Assert.assertEquals(count, 500);
     }
 
 
     @SmallTest
     public void testESelect500ToList() throws Exception {
-        ArrayList<Employee> employees = helper.query(Employee.class).limit(0, 500).execute().toList();
-        if (employees.size() < 1) {
-            fail("query to list error.");
-        } else {
-            Log.d(TAG, "ListSize:" + employees.size());
+        ArrayList<Employee> employees = new ArrayList<>();
+        for (int i = 0; i < 500; i++) {
+            Employee employee = new Employee();
+            employees.add(employee);
         }
+        helper.insertAll(employees.toArray());
+        ArrayList<Employee> list = helper.query(Employee.class).limit(0, 236).execute().toList();
+        Assert.assertEquals(list.size(), 236);
     }
 
 
     @SmallTest
-    public void testFDeleteAll() throws Exception {
-        helper.clear(Employee.class);
-        over = true;
-    }
-
-    @SmallTest
-    public void testGUpgrade() throws Exception {
+    public void tesFUpgrade() throws Exception {
         SimpleOrmSQLiteHelper helper = new SimpleOrmSQLiteHelper(getContext(), "test2.db", 1, Employee.class);
         Log.d(TAG, helper.getCurrentDatabase(true).getVersion() + "-->1");
         Assert.assertEquals(1, helper.getCurrentDatabase(false).getVersion());
@@ -133,21 +141,47 @@ public class OrmTest extends AndroidTestCase {
         }
     }
 
-    //@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
+    @SmallTest
+    public void testGDeleteAll() throws Exception {
+        helper.clear(Employee.class);
+    }
+
+    public void testHExtends() throws Exception {
+        SimpleOrmSQLiteHelper helper = new SimpleOrmSQLiteHelper(getContext(), "extends_test.db", 1, Mode.class);
+        Mode mode = new Mode();
+        mode.setA(123);
+        mode.setB(345);
+        mode.setC(567);
+        mode.setD("789");
+        mode.setE("901");
+        helper.insert(mode);
+        QueryAble<Mode> q = helper.query(Mode.class).execute();
+        Mode m2 = q.first();
+        q.close();
+        Assert.assertEquals(mode.getA(), m2.getA());
+        Assert.assertEquals(mode.getB(), m2.getB());
+        Assert.assertEquals(mode.getC(), m2.getC());
+        Assert.assertEquals(mode.getD(), m2.getD());
+        Assert.assertEquals(mode.getE(), m2.getE());
+        helper.close();
+        File file = new File(helper.getCurrentDatabase(false).getPath());
+        helper.getCurrentDatabase(false).close();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+            SQLiteDatabase.deleteDatabase(file);
+        } else {
+            file.delete();
+        }
+    }
+
+
     @Override
     protected void tearDown() throws Exception {
-        Log.d(TAG, "tearDown");
-        if (over) {
-            helper.close();
-            Log.d(TAG, "Clean.");
-            File file = new File(helper.getCurrentDatabase(false).getPath());
-            helper.getCurrentDatabase(false).close();
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-                SQLiteDatabase.deleteDatabase(file);
-            } else {
-                file.delete();
-            }
+        File file = new File(helper.getCurrentDatabase(false).getPath());
+        helper.getCurrentDatabase(false).close();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+            SQLiteDatabase.deleteDatabase(file);
+        } else {
+            file.delete();
         }
-        super.tearDown();
     }
 }

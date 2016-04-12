@@ -16,6 +16,7 @@
 
 package info.breezes.orm.utils;
 
+import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteClosable;
@@ -32,6 +33,7 @@ import java.util.Comparator;
 import java.util.Date;
 
 import info.breezes.orm.FCMap;
+import info.breezes.orm.Index;
 import info.breezes.orm.OrmConfig;
 import info.breezes.orm.annotation.Column;
 import info.breezes.orm.annotation.Table;
@@ -122,37 +124,19 @@ public class TableUtils {
     public static boolean createTable(SQLiteDatabase database, Class<?> tableClass, String tableName) {
         Table table = tableClass.getAnnotation(Table.class);
         if (table != null) {
+            TableStruct tableStruct = TableStructManager.buildTableStruct(tableClass);
             ArrayList<String> indexes = new ArrayList<>();
-            StringBuilder indexSql = new StringBuilder();
             StringBuilder createSql = new StringBuilder();
             createSql.append("CREATE TABLE IF NOT EXISTS ");
-            createSql.append(TextUtils.isEmpty(tableName) ? getTableName(tableClass, table) : tableName);
+            createSql.append(TextUtils.isEmpty(tableName) ? tableStruct.table : tableName);
             createSql.append("(");
             ArrayList<Col> cols = new ArrayList<>();
-            Field fields[] = tableClass.getFields();
-            for (Field field : fields) {
-                indexSql.setLength(0);
-                Column column = field.getAnnotation(Column.class);
-                if (column != null) {
-                    Col col = new Col();
-                    col.name = getColumnName(field, column);
-                    col.column = column;
-                    col.field = field;
-                    cols.add(col);
-                    if (column.uniqueIndex()) {
-                        indexSql.append("CREATE UNIQUE INDEX ");
-                        indexSql.append(getTableName(tableClass, table));
-                        indexSql.append("_uq_");
-                        indexSql.append(System.nanoTime());
-                        indexSql.append(" ON ");
-                        indexSql.append(getTableName(tableClass, table));
-                        indexSql.append("(");
-                        indexSql.append(getColumnName(field, column));
-                        indexSql.append(" DESC ");
-                        indexSql.append(")");
-                        indexes.add(indexSql.toString());
-                    }
-                }
+            for (FCMap f : tableStruct.fcmaps) {
+                Col col = new Col();
+                col.name = f.columnName;
+                col.column = f.column;
+                col.field = f.field;
+                cols.add(col);
             }
             Collections.sort(cols, new Comparator<Col>() {
                 @Override
@@ -160,7 +144,11 @@ public class TableUtils {
                     return lhs.column.order() - rhs.column.order();
                 }
             });
-
+            for (Index i : tableStruct.indexes) {
+                if (i.type == Index.IndexType.UNIQUE) {
+                    indexes.add("CREATE UNIQUE INDEX " + tableStruct.table + "_uq_" + System.nanoTime() + " ON " + tableStruct.table + "(" + i.fcMap.columnName + " DESC " + ")");
+                }
+            }
             for (Col col : cols) {
                 createSql.append(" ");
                 IColumnTranslator translator = OrmConfig.getTranslator(col.field.getType());
@@ -372,7 +360,7 @@ public class TableUtils {
                 database.beginTransaction();
                 innerOpenTransaction = true;
             }
-            TableStruct struct = buildTableStruct(entity.getClass());
+            TableStruct struct = TableStructManager.buildTableStruct(entity.getClass());
             SQLiteStatement statement = null;
             long rowId = -1;
             try {
@@ -403,7 +391,7 @@ public class TableUtils {
                 database.beginTransaction();
                 innerOpenTransaction = true;
             }
-            TableStruct struct = buildTableStruct(entity.getClass());
+            TableStruct struct = TableStructManager.buildTableStruct(entity.getClass());
             int rowCount = updateInternal(database, struct, entity, null);
             if (innerOpenTransaction) {
                 database.setTransactionSuccessful();
@@ -427,7 +415,7 @@ public class TableUtils {
                 database.beginTransaction();
                 innerOpenTransaction = true;
             }
-            TableStruct struct = buildTableStruct(entity.getClass());
+            TableStruct struct = TableStructManager.buildTableStruct(entity.getClass());
             SQLiteStatement statement = null;
             SQLiteStatement statementUpdate = null;
             long result = -1;
@@ -487,7 +475,7 @@ public class TableUtils {
                 database.beginTransaction();
                 innerOpenTransaction = true;
             }
-            TableStruct struct = buildTableStruct(entity.getClass());
+            TableStruct struct = TableStructManager.buildTableStruct(entity.getClass());
             int rowCount = updateInternal(database, struct, entity, column);
             if (innerOpenTransaction) {
                 database.setTransactionSuccessful();
@@ -537,7 +525,7 @@ public class TableUtils {
                 long[] rowIds = new long[objects.length];
                 if (objects.length > 0) {
                     checkOrmTableInstance(objects[0]);
-                    TableStruct struct = buildTableStruct(objects[0].getClass());
+                    TableStruct struct = TableStructManager.buildTableStruct(objects[0].getClass());
                     SQLiteStatement statement = null;
                     try {
                         statement = database.compileStatement(struct.insertSql);
@@ -577,7 +565,7 @@ public class TableUtils {
                 long[] rowIds = new long[objects.length];
                 if (objects.length > 0) {
                     checkOrmTableInstance(objects[0]);
-                    TableStruct struct = buildTableStruct(objects[0].getClass());
+                    TableStruct struct = TableStructManager.buildTableStruct(objects[0].getClass());
                     SQLiteStatement statement = null;
                     SQLiteStatement statementUpdate = null;
                     try {
@@ -666,91 +654,52 @@ public class TableUtils {
         }
     }
 
-    public static TableStruct buildTableStruct(Class<?> tableClass) {
-        Table table = tableClass.getAnnotation(Table.class);
-        String tableName = getTableName(tableClass, table);
-        TableStruct tableStruct = TableStructCache.get(tableName);
-        if (tableStruct != null) {
-            return tableStruct;
+    public static ContentValues buildContentValues(final Object entry) {
+        if (entry == null) {
+            return null;
         }
-        tableStruct = new TableStruct();
-        tableStruct.table = tableName;
-        ArrayList<FCMap> fcmaps = new ArrayList<>();
-        StringBuilder values = new StringBuilder(" VALUES(");
-        StringBuilder insertSql = new StringBuilder();
-        insertSql.append("INSERT INTO ");
-        insertSql.append(tableName);
-        insertSql.append("(");
-        Field fields[] = tableClass.getFields();
-        int i = 0;
-        for (Field field : fields) {
-            Column column = field.getAnnotation(Column.class);
-            if (column != null) {
-                FCMap fcmap = new FCMap();
-                fcmap.field = field;
-                fcmap.dataType = getDataType(field);
-                fcmap.autoincrement = column.autoincrement();
-                fcmap.columnName = getColumnName(field, column);
-                fcmap.translator = OrmConfig.getTranslator(field.getType());
-                fcmap.index = i++;
-                fcmap.column = column;
-                if (!column.autoincrement()) {
-                    insertSql.append(fcmap.columnName);
-                    insertSql.append(",");
-                    values.append("?,");
-                }
-                fcmaps.add(fcmap);
+        checkOrmTableInstance(entry);
+        ContentValues cv = new ContentValues();
+        TableStruct ts = TableStructManager.buildTableStruct(entry.getClass());
+        for (FCMap fcmap : ts.fcmaps) {
+            if (!fcmap.autoincrement) {
+                putTypedValue(cv, fcmap, entry);
             }
         }
-        insertSql.replace(insertSql.length() - 1, insertSql.length(), ")");
-        values.replace(values.length() - 1, values.length(), ")");
-        insertSql.append(values);
-        tableStruct.fcmaps = fcmaps;
-        tableStruct.insertSql = insertSql.toString();
-        buildUpdateByPrimaryKeySql(tableStruct);
-        TableStructCache.put(tableStruct);
-        return tableStruct;
+        return cv;
     }
 
-    private static void buildUpdateByPrimaryKeySql(TableStruct tableStruct) {
-        StringBuilder whereCondition = new StringBuilder(" WHERE ");
-        StringBuilder updateSql = new StringBuilder();
-        updateSql.append("UPDATE ");
-        updateSql.append(tableStruct.table);
-        updateSql.append(" SET ");
-        for (FCMap fcmap : tableStruct.fcmaps) {
-            String columnName = fcmap.columnName;
-            if (!fcmap.column.autoincrement() && !fcmap.column.primaryKey()) {
-                updateSql.append(columnName);
-                updateSql.append("=?,");
-            } else if (fcmap.column.primaryKey()) {
-                whereCondition.append(columnName);
-                whereCondition.append("=?");
-            }
+    private static void putTypedValue(ContentValues cv, FCMap fcmap, Object table) {
+        Object value = fcmap.translator.getColumnValue(fcmap.field, table);
+        if (value == null) {
+            cv.putNull(fcmap.columnName);
+            return;
         }
-        updateSql.replace(updateSql.length() - 1, updateSql.length(), " ");
-        updateSql.append(whereCondition);
-        tableStruct.updateSql = updateSql.toString();
-    }
-
-    private static FCMap.DataType getDataType(Field field) {
-        Class<?> type = field.getType();
-        if (int.class.isAssignableFrom(type)) {
-            return FCMap.DataType.Int;
-        } else if (long.class.isAssignableFrom(type)) {
-            return FCMap.DataType.Long;
-        } else if (float.class.isAssignableFrom(type)) {
-            return FCMap.DataType.Float;
-        } else if (double.class.isAssignableFrom(type)) {
-            return FCMap.DataType.Double;
-        } else if (byte[].class.isAssignableFrom(type)) {
-            return FCMap.DataType.Blob;
-        } else if (Date.class.isAssignableFrom(type)) {
-            return FCMap.DataType.Date;
-        } else if (boolean.class.isAssignableFrom(type)) {
-            return FCMap.DataType.Boolean;
-        } else {
-            return FCMap.DataType.String;
+        switch (fcmap.dataType) {
+            case Int:
+                cv.put(fcmap.columnName, (int) value);
+                break;
+            case Long:
+                cv.put(fcmap.columnName, (long) value);
+                break;
+            case Float:
+                cv.put(fcmap.columnName, (float) value);
+                break;
+            case Double:
+                cv.put(fcmap.columnName, (double) value);
+                break;
+            case Date:
+                cv.put(fcmap.columnName, ((Date) value).getTime());
+                break;
+            case Boolean:
+                cv.put(fcmap.columnName, ((boolean) value) ? 1 : 0);
+                break;
+            case Blob:
+                cv.put(fcmap.columnName, (byte[]) value);
+                break;
+            default:
+                cv.put(fcmap.columnName, String.valueOf(value));
+                break;
         }
     }
 

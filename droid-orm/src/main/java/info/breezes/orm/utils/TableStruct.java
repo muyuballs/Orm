@@ -17,12 +17,15 @@
 package info.breezes.orm.utils;
 
 import info.breezes.orm.FCMap;
+import info.breezes.orm.Index;
 
 import java.util.ArrayList;
 
-final class TableStruct {
+public final class TableStruct {
     public String table;
     public String insertSql;
     public String updateSql;
-    public ArrayList<FCMap> fcmaps;
+    public ArrayList<FCMap> fcmaps = new ArrayList<>();
+    public ArrayList<Index> indexes = new ArrayList<>();
+
 }

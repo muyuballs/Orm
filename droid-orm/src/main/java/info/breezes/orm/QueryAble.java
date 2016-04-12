@@ -32,6 +32,8 @@ import info.breezes.orm.expressions.Limit;
 import info.breezes.orm.expressions.OrderBy;
 import info.breezes.orm.expressions.Where;
 import info.breezes.orm.utils.CursorUtils;
+import info.breezes.orm.utils.TableStruct;
+import info.breezes.orm.utils.TableStructManager;
 import info.breezes.orm.utils.TableUtils;
 
 public class QueryAble<T> implements Iterable<T>, Iterator<T>, Closeable {
@@ -44,9 +46,8 @@ public class QueryAble<T> implements Iterable<T>, Iterator<T>, Closeable {
     private String sql;
     private Cursor cursor;
     private Context mContext;
-    private String tableName;
 
-    private ArrayList<FCMap> fcMaps;
+    private TableStruct tableStruct;
 
     public QueryAble(Class<T> table, SQLiteDatabase database, Context context) {
         this.table = table;
@@ -55,7 +56,7 @@ public class QueryAble<T> implements Iterable<T>, Iterator<T>, Closeable {
         wheres = new ArrayList<>();
         orderBys = new ArrayList<>();
         params = new ArrayList<>();
-        fcMaps = new ArrayList<>();
+        tableStruct = TableStructManager.buildTableStruct(table);
     }
 
     public QueryAble<T> beginSub() {
@@ -119,23 +120,7 @@ public class QueryAble<T> implements Iterable<T>, Iterator<T>, Closeable {
         }
         cursor = database.rawQuery(sql, params.toArray(new String[params.size()]));
         if (mContext != null) {
-            cursor.setNotificationUri(mContext.getContentResolver(), Uri.parse("content://orm/" + tableName));
-        }
-        fcMaps.clear();
-        Field fields[] = table.getFields();
-        for (Field field : fields) {
-            Column column = field.getAnnotation(Column.class);
-            if (column != null) {
-                String columnName = TableUtils.getColumnName(field, column);
-                Class<?> fieldType = field.getType();
-                FCMap fcMap = new FCMap();
-                fcMap.field = field;
-                fcMap.translator = OrmConfig.getTranslator(fieldType);
-                fcMap.index = cursor.getColumnIndex(columnName);
-                if (fcMap.index != -1) {
-                    fcMaps.add(fcMap);
-                }
-            }
+            cursor.setNotificationUri(mContext.getContentResolver(), Uri.parse("content://orm/" + tableStruct.table));
         }
 
         if (OrmConfig.Debug) {
@@ -185,10 +170,20 @@ public class QueryAble<T> implements Iterable<T>, Iterator<T>, Closeable {
     }
 
     private String buildSQL() {
-        tableName = TableUtils.getTableName(table);
         StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append("SELECT * FROM ");
-        stringBuilder.append(tableName);
+        stringBuilder.append("SELECT ");
+        boolean first = true;
+        for (FCMap f : tableStruct.fcmaps) {
+            if (first) {
+                first = false;
+                stringBuilder.append(f.columnName);
+            } else {
+                stringBuilder.append(",");
+                stringBuilder.append(f.columnName);
+            }
+        }
+        stringBuilder.append(" FROM ");
+        stringBuilder.append(tableStruct.table);
         if (wheres.size() > 0) {
             Where where = wheres.get(0);
             stringBuilder.append(" WHERE ");
@@ -248,7 +243,7 @@ public class QueryAble<T> implements Iterable<T>, Iterator<T>, Closeable {
     }
 
     private T readCurrentEntity() {
-        return CursorUtils.readCurrentEntity(table, cursor, fcMaps);
+        return CursorUtils.readCurrentEntity(table, cursor, tableStruct);
     }
 
     @Override

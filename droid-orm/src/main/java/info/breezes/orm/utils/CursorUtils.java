@@ -18,6 +18,7 @@ package info.breezes.orm.utils;
 
 import android.database.Cursor;
 import android.util.Log;
+
 import info.breezes.orm.FCMap;
 import info.breezes.orm.OrmConfig;
 import info.breezes.orm.annotation.Column;
@@ -29,12 +30,13 @@ import java.util.Map;
 
 public class CursorUtils {
 
-    public static <T> T readCurrentEntity(Class<T> type, Cursor cursor, ArrayList<FCMap> fcMaps) {
+    public static <T> T readCurrentEntity(Class<T> type, Cursor cursor, TableStruct tableStruct) {
         long st = System.currentTimeMillis();
         try {
             T entity = type.newInstance();
-            for (FCMap fcMap : fcMaps) {
-                Object value = fcMap.translator.readColumnValue(cursor, fcMap.index, fcMap.field);
+            int index = 0;
+            for (FCMap fcMap : tableStruct.fcmaps) {
+                Object value = fcMap.translator.readColumnValue(cursor, index++, fcMap.field);
                 if (value != null) {
                     fcMap.field.set(entity, value);
                 }

@@ -23,6 +23,8 @@ import android.database.sqlite.SQLiteDatabase;
 import android.os.Build;
 import android.util.Log;
 
+import java.util.List;
+
 import info.breezes.orm.model.Db;
 import info.breezes.orm.utils.TableUtils;
 

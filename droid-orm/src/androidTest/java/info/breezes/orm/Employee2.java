@@ -26,119 +26,119 @@ public class Employee2 implements Serializable {
 
     private static final long serialVersionUID = -5576314467281405644L;
 
-    @Column(primaryKey = true, uniqueIndex = true, autoincrement = true)
+    @Column(name = "id",primaryKey = true, uniqueIndex = true, autoincrement = true)
     public int employee_id;
-    @Column
+    @Column(name = "cid")
     public int company_id;
-    @Column
+    @Column(name = "did")
     public int department_id;
-    @Column
+    @Column(name = "pid")
     public int position_id;
-    @Column
+    @Column(name = "en1")
     public String employee_name;
     public String pinyin;
-    @Column
+    @Column(name = "es1")
     public int employee_sex;
-    @Column
+    @Column(name = "eb1")
     public String employee_birthdate;
-    @Column
+    @Column(name = "en")
     public String employee_nationality;
-    @Column
+    @Column(name = "ec")
     public String employee_code;
-    @Column
+    @Column(name = "ep")
     public String employee_polit;
-    @Column
+    @Column(name = "ems")
     public String employee_martial_status;
-    @Column
+    @Column(name = "ea")
     public String employee_avatar;
-    @Column
+    @Column(name = "ei1")
     public String employee_hiredate;
-    @Column
+    @Column(name = "ef")
     public String employee_firedate;
-    @Column
+    @Column(name = "el")
     public String employee_cellphone;
-    @Column
+    @Column(name = "ee")
     public String employee_email;
-    @Column
+    @Column(name = "eq")
     public String employee_qq;
-    @Column
+    @Column(name = "epn")
     public String employee_phone_number;
-    @Column
+    @Column(name = "er1")
     public String employee_probation;
-    @Column
+    @Column(name = "it")
     public String insurance_tpl;
-    @Column
+    @Column(name = "ic")
     public String insurance_company;
-    @Column
+    @Column(name = "st")
     public String salary_tpl;
-    @Column
+    @Column(name = "at")
     public String attendance_tpl;
-    @Column
+    @Column(name = "ess")
     public String employee_password;
-    @Column
+    @Column(name = "eit")
     public String employee_idcard_type;
-    @Column
+    @Column(name = "eic")
     public String employee_idcard_code;
-    @Column
+    @Column(name = "eio")
     public String employee_idcard_office;
-    @Column
+    @Column(name = "eie")
     public String employee_idcard_expire;
-    @Column
+    @Column(name = "eia")
     public String employee_idcard_address;
-    @Column
+    @Column(name = "eb")
     public String employee_birthplace;
-    @Column
+    @Column(name = "eadd")
     public String employee_address;
-    @Column
+    @Column(name = "ecs")
     public String employee_current_status;
-    @Column
+    @Column(name = "ele")
     public String employee_level;
-    @Column
+    @Column(name = "ced")
     public String contract_effecitve_date;
-    @Column
+    @Column(name = "cea")
     public String contract_expiry_date;
-    @Column
+    @Column(name = "cet")
     public String contract_expiry_times;
-    @Column
+    @Column(name = "eps")
     public String employee_probation_start;
-    @Column
+    @Column(name = "epe")
     public String employee_probation_end;
-    @Column
+    @Column(name = "dn")
     public String dep_name;
-    @Column
+    @Column(name = "pn")
     public String pos_name;
-    @Column
+    @Column(name = "ei")
     public String education_id;
-    @Column
+    @Column(name = "et")
     public String education_type;
-    @Column
+    @Column(name = "es")
     public String education_subject;
-    @Column
+    @Column(name = "er")
     public String education_record;
-    @Column
+    @Column(name = "edl")
     public String education_dirving_licence;
-    @Column
+    @Column(name = "eti")
     public String employee_title;
-    @Column
+    @Column(name = "elt")
     public String education_language_type;
-    @Column
+    @Column(name = "ell")
     public String education_language_level;
-    @Column
+    @Column(name = "stv")
     public String salary_tpl_value;
-    @Column
+    @Column(name = "stf")
     public String salary_tpl_from;
-    @Column
+    @Column(name = "itv")
     public String insurance_tpl_value;
-    @Column
+    @Column(name = "itf")
     public String insurance_tpl_from;
-    @Column
+    @Column(name = "atv")
     public String attendance_tpl_value;
-    @Column
+    @Column(name = "atf")
     public String attendance_tpl_from;
-    @Column(defaultValue = "")
+    @Column(name = "atf1")
     public String attendance_tpl_from1;
-    @Column(defaultValue = "")
+    @Column(name = "atf2")
     public String attendance_tpl_from2;
-    @Column(defaultValue = "")
+    @Column(name = "atf3")
     public String attendance_tpl_from3;
 }

@@ -22,6 +22,9 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.os.Build;
 
+import java.util.Collection;
+import java.util.List;
+
 import info.breezes.orm.utils.TableUtils;
 
 public abstract class OrmSQLiteHelper extends SQLiteOpenHelper {
@@ -72,6 +75,10 @@ public abstract class OrmSQLiteHelper extends SQLiteOpenHelper {
         return TableUtils.deleteBy(getCurrentDatabase(true), object, column, mContext);
     }
 
+    public long[] insertAll(Collection collection) {
+        return insertAll(collection.toArray());
+    }
+
     public long[] insertAll(Object[] objects) {
         SQLiteDatabase database = getCurrentDatabase(true);
         boolean inTransaction = database.inTransaction();
@@ -89,6 +96,10 @@ public abstract class OrmSQLiteHelper extends SQLiteOpenHelper {
                 database.endTransaction();
             }
         }
+    }
+
+    public long[] insertOrUpdateAll(Collection collection) {
+        return insertOrUpdateAll(collection.toArray());
     }
 
     public long[] insertOrUpdateAll(Object[] objects) {
