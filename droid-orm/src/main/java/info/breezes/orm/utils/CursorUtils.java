@@ -61,6 +61,7 @@ public class CursorUtils {
             T entity = type.newInstance();
             Field fields[] = type.getDeclaredFields();
             for (Field field : fields) {
+                field.setAccessible(true);
                 Column column = field.getAnnotation(Column.class);
                 if (column != null) {
                     String columnName = TableUtils.getColumnName(field, column);
@@ -96,6 +97,7 @@ public class CursorUtils {
             T entity = type.newInstance();
             Field fields[] = type.getDeclaredFields();
             for (Field field : fields) {
+                field.setAccessible(true);
                 Column column = field.getAnnotation(Column.class);
                 if (column != null) {
                     String columnName = TableUtils.getColumnName(field);
