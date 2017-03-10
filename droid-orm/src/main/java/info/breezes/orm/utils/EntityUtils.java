@@ -15,7 +15,7 @@ public class EntityUtils {
         for (Field field : fields) {
             field.setAccessible(true);
             Column column = field.getAnnotation(Column.class);
-            if (column != null) {
+            if (column != null && !column.autoincrement()) {
                 String columnName = TableUtils.getColumnName(field, column);
                 Class<?> fieldType = field.getType();
                 Object value = OrmConfig.getTranslator(fieldType).getColumnValue(field, entity);
