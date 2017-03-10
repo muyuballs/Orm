@@ -5,6 +5,7 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 
 import info.breezes.orm.FCMap;
 import info.breezes.orm.Index;
@@ -43,6 +44,12 @@ public final class TableStructManager {
         buildUpdateByPrimaryKeySql(tableStruct);
         put(tableStruct);
         return tableStruct;
+    }
+
+    public List<FCMap> buildFcMap(Class<?> tableClass) {
+        ArrayList<FCMap> fcmap = new ArrayList<>();
+        parseTableClass(0, tableClass, fcmap);
+        return fcmap;
     }
 
     private static void buildIndexes(TableStruct tableStruct) {
