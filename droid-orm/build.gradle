@@ -27,8 +27,8 @@ android {
     defaultConfig {
         minSdkVersion 8
         targetSdkVersion 22
-        versionCode 23
-        versionName '1.4.2.1'
+        versionCode 24
+        versionName '1.4.2.2'
     }
     buildTypes {
         release {
@@ -47,7 +47,7 @@ dependencies {
     compile fileTree(include: ['*.jar'], dir: 'libs')
 }
 
-apply from: 'https://raw.githubusercontent.com/xbreezes/GradleConfigs/master/bintray.gradle'
+apply from: 'https://raw.githubusercontent.com/muyuballs/GradleConfigs/master/bintray.gradle'
 
 
 
